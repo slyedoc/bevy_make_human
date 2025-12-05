@@ -1,0 +1,14 @@
+# makehuman specific files
+*.mhclo filter=lfs diff=lfs merge=lfs -text
+*.mhmat filter=lfs diff=lfs merge=lfs -text
+*.mhw filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.thumb filter=lfs diff=lfs merge=lfs -text
+*.json filter=lfs diff=lfs merge=lfs -text
+*.target filter=lfs diff=lfs merge=lfs -text
+*.proxy filter=lfs diff=lfs merge=lfs -text
+*.bvh filter=lfs diff=lfs merge=lfs -text
+*.mirror filter=lfs diff=lfs merge=lfs -text
+
