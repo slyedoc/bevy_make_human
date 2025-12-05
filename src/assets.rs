@@ -14,12 +14,11 @@ pub struct CharacterAssets {
     pub skin_obj_base: Option<Handle<ObjBaseMesh>>,
     pub skin_proxy: Option<Handle<ProxyAsset>>,
     pub skin_material: Handle<StandardMaterial>,
+    
     pub parts: Vec<MHItem>,
 
     pub rig_bones: Handle<RigBones>,
     pub rig_weights: Handle<SkinningWeights>,
-    /// Optional skeleton GLB for base rotations (animation compatibility)
-    pub skeleton_glb: Option<Handle<Gltf>>,
 
     pub morphs: Vec<(Handle<MorphTargetData>, f32)>,
     /// Phenotype macrodetail targets with interpolation weights
@@ -114,10 +113,7 @@ impl CharacterAssets {
             skin_material: asset_server.load(c.skin.material.mhmat_path().to_string()),
 
             rig_bones: asset_server.load(c.rig.rig_json_path().to_string()),
-            rig_weights: asset_server.load(c.rig.weights_json_path().to_string()),
-            skeleton_glb: c.rig
-                .skeleton_glb_path()
-                .map(|p| asset_server.load(p.to_string())),
+            rig_weights: asset_server.load(c.rig.weights().to_string()),            
             morphs: c.morphs.0
                 .iter()
                 .filter_map(|Morph { target, value }| {
@@ -247,76 +243,5 @@ impl Morph {
 impl From<(MorphTarget, f32)> for Morph {
     fn from((target, value): (MorphTarget, f32)) -> Self {
         Self::new(target, value)
-    }
-}
-
-/// Trait to get thumbnail path from an enum variant
-pub trait HasThumbnail {
-    fn thumbnail_path(&self) -> Option<&'static str>;
-}
-
-impl HasThumbnail for SkinMesh {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for SkinMaterial {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for Hair {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for EyesMesh {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for EyebrowsAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for EyelashesAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for TeethAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for TongueAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for Rig {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        None
-    } // No thumbs for rigs
-}
-impl HasThumbnail for EyesMaterial {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        None
-    } // No thumbs for eye materials
-}
-impl HasThumbnail for ClothingAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl HasThumbnail for PoseAsset {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.get_str("thumb")
-    }
-}
-impl<T: HasThumbnail> HasThumbnail for Option<T> {
-    fn thumbnail_path(&self) -> Option<&'static str> {
-        self.as_ref().and_then(|v| v.thumbnail_path())
     }
 }

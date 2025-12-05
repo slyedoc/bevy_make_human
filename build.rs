@@ -387,7 +387,7 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Generate Rig enum - requires rig.json and weights.json, optional skeleton.glb
+/// Generate Rig enum - requires rig.json and mhw
 fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     let dir_path = assets_dir.join("rigs/standard");
 
@@ -403,7 +403,6 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
-    writeln!(f, "/// Generated from assets/make_human/rigs/standard")?;
     writeln!(f, "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
     writeln!(f, "pub enum Rig {{")?;
 
@@ -415,7 +414,7 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
         // Check required files exist
         let rig_path = asset_dir.join(format!("{}.rig.json", dir_name_str));
-        let weights_path = asset_dir.join(format!("{}.weights.json", dir_name_str));
+        let weights_path = asset_dir.join(format!("{}.mhw", dir_name_str));
 
         if !rig_path.exists() || !weights_path.exists() {
             continue;
@@ -431,13 +430,7 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let mut props = Vec::new();
 
         props.push(format!("rig_json = \"make_human/rigs/standard/{}/{}.rig.json\"", dir_name_str, dir_name_str));
-        props.push(format!("weights_json = \"make_human/rigs/standard/{}/{}.weights.json\"", dir_name_str, dir_name_str));
-
-        // Check for optional skeleton GLB (contains base rotations for animation)
-        let glb_path = asset_dir.join(format!("{}.glb", dir_name_str));
-        if glb_path.exists() {
-            props.push(format!("skeleton_glb = \"make_human/rigs/standard/{}/{}.glb\"", dir_name_str, dir_name_str));
-        }
+        props.push(format!("weights = \"make_human/rigs/standard/{}/{}.mhw\"", dir_name_str, dir_name_str));
 
         writeln!(f, "    /// {}", dir_name_str)?;
         writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
@@ -450,22 +443,16 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Generate helper methods
     writeln!(f, "impl Rig {{")?;
 
-    writeln!(f, "    /// Get .rig.json path")?;
     writeln!(f, "    pub fn rig_json_path(&self) -> &str {{")?;
     writeln!(f, "        self.get_str(\"rig_json\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get .weights.json path")?;
-    writeln!(f, "    pub fn weights_json_path(&self) -> &str {{")?;
-    writeln!(f, "        self.get_str(\"weights_json\").unwrap()")?;
+    writeln!(f, "    pub fn weights(&self) -> &str {{")?;
+    writeln!(f, "        self.get_str(\"weights\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get skeleton .glb path if available (for base rotations)")?;
-    writeln!(f, "    pub fn skeleton_glb_path(&self) -> Option<&str> {{")?;
-    writeln!(f, "        self.get_str(\"skeleton_glb\")")?;
-    writeln!(f, "    }}")?;
     writeln!(f)?;
     writeln!(f, "}}")?;
     writeln!(f)?;
