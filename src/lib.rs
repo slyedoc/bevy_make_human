@@ -101,22 +101,13 @@ impl Plugin for MakeHumanPlugin {
             .init_asset::<Pose>()
             .init_asset_loader::<BvhPoseLoader>()
             // egui registration
-            .register_type::<HumanConfig>()
+            .register_type::<ClothingOffset>()
+            .register_type::<FloorOffset>()
             .register_type::<Morph>();
     }
 }
 
-// TODO: from Humentity, leaving here as reminder to checkout later, tried scaling tracks myself
-/// Use animation postprocessing to rescale position tracks to mesh size
-/// This has some performance overhead. If disabled then translation tracks will
-/// be removed from all retargeted animations.
-// #[derive(Copy, Clone, Default, Resource, Debug)]
-// pub enum TranslationTracks {
-//     #[default]
-//     Root,
-//     Full,
-//     None,
-// }
+
 
 #[derive(AssetCollection, Resource)]
 pub struct BaseMeshAssets {
@@ -160,7 +151,6 @@ fn build_basemesh(
         let vtx_data = get_vertex_positions(&obj_base_mesh.mesh);
         let vertex_map = generate_vertex_map(&obj_base_mesh.vertices, &vtx_data);
         let mhid_lookup = generate_mhid_lookup(&vertex_map);
-
         PrepareBasemeshOutput {
             mhid_lookup,
         }
@@ -210,6 +200,8 @@ pub struct CharacterProcessingTask(Task<CharacterProcessingOutput>);
 /// All data needed for character processing (extracted from assets)
 struct CharacterProcessingInput {
     base_vertices: Vec<Vec3>,
+    base_mesh: Mesh,
+    mhid_lookup: Vec<u16>,
     vertex_groups: VertexGroups,
     // Morphs
     phenotype_morphs: Vec<(MorphTargetData, f32)>,
@@ -218,14 +210,13 @@ struct CharacterProcessingInput {
     rig_bones: RigBones,
     skinning_weights: SkinningWeights,
 
-    // Skin Proxy
-    proxy_asset: ProxyAsset,
-    proxy_obj_base: ObjBaseMesh,
-    skin: Handle<StandardMaterial>,
-    
+    // Skin - optional proxy (None = use base mesh)
+    skin_proxy: Option<(ProxyAsset, ObjBaseMesh)>,
+    skin_material: Handle<StandardMaterial>,
+
     // Parts
     parts: Vec<MHItemLoaded>,
-    
+
     clothing_offset: f32,
 }
 
@@ -239,23 +230,60 @@ struct CharacterProcessingOutput {
     min_y: f32,
 }
 
+type CharacterQuery = (
+    Entity,
+    &'static Rig,
+    &'static Skin,
+    &'static Eyes,
+    &'static Eyebrows,
+    &'static Eyelashes,
+    &'static Teeth,
+    &'static Tongue,
+    Option<&'static Hair>,
+    &'static Clothing,
+    &'static Morphs,
+    &'static Phenotype,
+    Option<&'static ClothingOffset>,
+);
+
+type CharacterChangedFilter = Or<(
+    Changed<Rig>,
+    Changed<Skin>,
+    Changed<Eyes>,
+    Changed<Eyebrows>,
+    Changed<Eyelashes>,
+    Changed<Teeth>,
+    Changed<Tongue>,
+    Changed<Hair>,
+    Changed<Clothing>,
+    Changed<Morphs>,
+    Changed<Phenotype>,
+)>;
+
 fn character_changed(
     mut commands: Commands,
-    query: Query<
-        (Entity, &HumanConfig, &Phenotype),
-        Or<(Changed<HumanConfig>, Changed<Phenotype>)>,
-    >,
+    query: Query<CharacterQuery, CharacterChangedFilter>,
     asset_server: Res<AssetServer>,
 ) {
-    for (e, config, phenotype) in query.iter() {
+    for (e, rig, skin, eyes, eyebrows, eyelashes, teeth, tongue, hair, clothing, morphs, phenotype, clothing_offset) in query.iter() {
         commands
             .entity(e)
-            // Cancel any existing processing task
             .remove::<CharacterProcessingTask>()
-            // create a entity level asset collection
-            .insert(CharacterAssets::from_config(
-                config,
-                phenotype,
+            .insert(CharacterAssets::from_components(
+                CharacterComponents {
+                    rig,
+                    skin,
+                    eyes,
+                    eyebrows,
+                    eyelashes,
+                    teeth,
+                    tongue,
+                    hair,
+                    clothing,
+                    morphs,
+                    phenotype,
+                    clothing_offset: clothing_offset.map(|c| c.0).unwrap_or(0.001),
+                },
                 &asset_server,
             ));
     }
@@ -263,16 +291,28 @@ fn character_changed(
 
 fn init_existing_character(
     mut commands: Commands,
-    query: Query<(Entity, &HumanConfig, &Phenotype), Without<CharacterAssets>>,
+    query: Query<CharacterQuery, (With<Human>, Without<CharacterAssets>)>,
     asset_server: Res<AssetServer>,
 ) {
-    for (e, config, phenotype) in query.iter() {
+    for (e, rig, skin, eyes, eyebrows, eyelashes, teeth, tongue, hair, clothing, morphs, phenotype, clothing_offset) in query.iter() {
         info!("Initializing existing character {:?}", e);
         commands
-            .entity(e) // create a entity level asset collection
-            .insert(CharacterAssets::from_config(
-                config,
-                phenotype,
+            .entity(e)
+            .insert(CharacterAssets::from_components(
+                CharacterComponents {
+                    rig,
+                    skin,
+                    eyes,
+                    eyebrows,
+                    eyelashes,
+                    teeth,
+                    tongue,
+                    hair,
+                    clothing,
+                    morphs,
+                    phenotype,
+                    clothing_offset: clothing_offset.map(|c| c.0).unwrap_or(0.001),
+                },
                 &asset_server,
             ));
     }
@@ -283,6 +323,7 @@ fn character_loading(
     mut query: Query<(Entity, &CharacterAssets, Option<&Name>)>,
     asset_server: Res<AssetServer>,
     base_mesh: Res<BaseMesh>,
+    meshes: Res<Assets<Mesh>>,
     mhclo_assets: Res<Assets<MhcloAsset>>,
     proxy_assets: Res<Assets<ProxyAsset>>,
     obj_base_assets: Res<Assets<ObjBaseMesh>>,
@@ -323,9 +364,21 @@ fn character_loading(
                     })
                 .collect::<Vec<_>>();
             
+            // Build skin proxy data if present
+            let skin_proxy = match (&assets.skin_proxy, &assets.skin_obj_base) {
+                (Some(proxy_h), Some(obj_h)) => {
+                    let proxy = proxy_assets.get(proxy_h).unwrap().clone();
+                    let obj = obj_base_assets.get(obj_h).unwrap().clone();
+                    Some((proxy, obj))
+                }
+                _ => None,
+            };
+
             // Extract for task
             let input = CharacterProcessingInput {
                 base_vertices: base_mesh.vertices.clone(),
+                base_mesh: meshes.get(&base_mesh.mesh).unwrap().clone(),
+                mhid_lookup: base_mesh.mhid_lookup.clone(),
                 vertex_groups: base_mesh.vertex_groups.clone(),
                 phenotype_morphs: assets
                     .phenotype_morphs
@@ -342,9 +395,8 @@ fn character_loading(
                     .get(&assets.rig_weights)
                     .unwrap()
                     .clone(),
-                skin: assets.skin_material.clone(),
-                proxy_asset: proxy_assets.get(&assets.proxy_proxy).unwrap().clone(),
-                proxy_obj_base: obj_base_assets.get(&assets.proxy_obj_base).unwrap().clone(),
+                skin_material: assets.skin_material.clone(),
+                skin_proxy,
                 clothing_offset: assets.clothing_offset,
                 parts,
             };
@@ -414,24 +466,36 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
         mat: s.mat,
     }).collect::<Vec<_>>();
     
-    // Skin mesh from proxy
-    let mut proxy_mesh = apply_proxy_fitting(
-        &input.proxy_obj_base.mesh,
-        &input.proxy_asset,
-        &morphed_vertices,
-        &input.proxy_obj_base.vertices,
-    );
-    proxy_mesh = apply_skinning_weights_to_proxy(
-        proxy_mesh,
-        &input.proxy_asset,
-        &input.proxy_obj_base.mhid_lookup,
-        &skeleton,
-        &input.skinning_weights,
-    );    
+    // Skin mesh - use proxy if available, otherwise base mesh
+    let skin_mesh = if let Some((proxy_asset, proxy_obj)) = &input.skin_proxy {
+        let mut mesh = apply_proxy_fitting(
+            &proxy_obj.mesh,
+            proxy_asset,
+            &morphed_vertices,
+            &proxy_obj.vertices,
+        );
+        mesh = apply_skinning_weights_to_proxy(
+            mesh,
+            proxy_asset,
+            &proxy_obj.mhid_lookup,
+            &skeleton,
+            &input.skinning_weights,
+        );
+        mesh
+    } else {
+        // Use base mesh directly with morph applied
+        apply_morphed_base_mesh(
+            &input.base_mesh,
+            &input.mhid_lookup,
+            &morphed_vertices,
+            &skeleton,
+            &input.skinning_weights,
+        )
+    };
     parts.push(MHItemResult {
         tag: MHTag::Skin,
-        mesh: proxy_mesh,
-        mat: input.skin.clone(),
+        mesh: skin_mesh,
+        mat: input.skin_material.clone(),
     });
     
     // Calculate character height from morphed vertices
@@ -456,14 +520,14 @@ fn update_character(
     mut query: Query<(
         Entity,
         &mut CharacterProcessingTask,
-        &HumanConfig,
+        Option<&FloorOffset>,
     )>,
     children_query: Query<&Children>,
     character_part_query: Query<&MHTag>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    for (entity, mut task, config) in query.iter_mut() {
+    for (entity, mut task, floor_offset) in query.iter_mut() {
         if let Some( CharacterProcessingOutput { 
             skeleton,            
             parts,
@@ -501,7 +565,8 @@ fn update_character(
             let capsule_length = (height - (capsule_radius * 2.0)).max(0.1);
             let collider = Collider::capsule(capsule_radius, capsule_length);
             // Center of capsule = min_y - floor_offset + radius + length/2
-            let collider_center_y = min_y - config.floor_offset + capsule_radius + (capsule_length / 2.0);
+            let floor_off = floor_offset.map(|f| f.0).unwrap_or(0.0);
+            let collider_center_y = min_y - floor_off + capsule_radius + (capsule_length / 2.0);
             
             // Body mesh on main entity + faceshape deformation data
             commands

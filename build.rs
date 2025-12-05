@@ -18,30 +18,32 @@ fn main() -> io::Result<()> {
     println!("cargo:rerun-if-changed=build.rs");    
     println!("cargo:rerun-if-changed={:?}", assets_dir.as_os_str());
     
-    let out_dir = env::var("OUT_DIR").unwrap();                
+    let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("assets.rs");
     let mut f = File::create(dest_path)?;
-    
+
+    // Import Component for enums that derive it
+    writeln!(f, "use bevy::prelude::Component;")?;
     writeln!(f)?;
 
-    // Proxymeshes
-    generate_asset_enum(&mut f, &assets_dir, "proxymeshes", "ProxyMesh", &AssetFilePattern {
-        required: &["obj", "proxy", "thumb"],        
+    // Proxymeshes -> SkinMesh
+    generate_asset_enum(&mut f, &assets_dir, "proxymeshes", "SkinMesh", &AssetFilePattern {
+        required: &["obj", "proxy", "thumb"],
         textures: &[],
     })?;
 
     // Rigs
     generate_rig_enum(&mut f, &assets_dir)?;
 
-    // Skins
-    generate_asset_enum(&mut f, &assets_dir, "skins", "SkinAsset", &AssetFilePattern {
+    // Skins -> SkinMaterial
+    generate_asset_enum(&mut f, &assets_dir, "skins", "SkinMaterial", &AssetFilePattern {
         required: &["mhmat", "thumb"],
         textures: &["diffuse", "normal", "specular"],
     })?;
 
-    // Generate enums for each asset type with specific file patterns    
-    generate_asset_enum(&mut f, &assets_dir, "hair", "HairAsset", &AssetFilePattern {
-        required: &["mhclo", "mhmat", "obj", "thumb"],        
+    // Generate enums for each asset type with specific file patterns
+    generate_asset_enum(&mut f, &assets_dir, "hair", "Hair", &AssetFilePattern {
+        required: &["mhclo", "mhmat", "obj", "thumb"],
         textures: &["diffuse", "normal", "specular", "ao", "bump"],
     })?;
 
@@ -52,9 +54,9 @@ fn main() -> io::Result<()> {
     })?;
 
     // Eyes
-    generate_flat_file_enum(&mut f, &assets_dir, "eyes/materials", "EyeMaterialAsset", "mhmat")?;
-    generate_asset_enum(&mut f, &assets_dir, "eyes", "EyesAsset", &AssetFilePattern {
-        required: &["mhclo", "obj", "thumb"],        
+    generate_flat_file_enum(&mut f, &assets_dir, "eyes/materials", "EyesMaterial", "mhmat")?;
+    generate_asset_enum(&mut f, &assets_dir, "eyes", "EyesMesh", &AssetFilePattern {
+        required: &["mhclo", "obj", "thumb"],
         textures: &[],
     })?;    
   
@@ -142,8 +144,10 @@ fn generate_asset_enum(
     });
 
     // Write enum with strum derives including EnumProperty
+    // Add Component derive for types used directly as components (Hair)
+    let component_derive = if enum_name == "Hair" { "Component, " } else { "" };
     writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(f, "#[derive({}Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]", component_derive)?;
     writeln!(f, "pub enum {} {{", enum_name)?;
 
     for entry in &entries {
@@ -259,14 +263,6 @@ fn generate_asset_enum(
         writeln!(f)?;
     }
 
-    // Generate random() using strum's EnumIter
-    writeln!(f, "    /// Pick random variant")?;
-    writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-    writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-    writeln!(f, "        use strum::IntoEnumIterator;")?;
-    writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-    writeln!(f, "    }}")?;
-
     writeln!(f, "}}")?;
     writeln!(f)?;
 
@@ -327,12 +323,6 @@ fn generate_flat_file_enum(
     writeln!(f, "        self.get_str(\"mhmat\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
-
-    writeln!(f, "    /// Pick random variant")?;
-    writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-    writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-    writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-    writeln!(f, "    }}")?;
     writeln!(f, "}}")?;
     writeln!(f)?;
 
@@ -391,20 +381,13 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "        self.get_str(\"bvh\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
-
-    writeln!(f, "    /// Pick random variant")?;
-    writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-    writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-    writeln!(f, "        use strum::IntoEnumIterator;")?;
-    writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-    writeln!(f, "    }}")?;
     writeln!(f, "}}")?;
     writeln!(f)?;
 
     Ok(())
 }
 
-/// Generate RigAsset enum - requires rig.json and weights.json, optional skeleton.glb
+/// Generate Rig enum - requires rig.json and weights.json, optional skeleton.glb
 fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     let dir_path = assets_dir.join("rigs/standard");
 
@@ -421,9 +404,10 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
     writeln!(f, "/// Generated from assets/make_human/rigs/standard")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
-    writeln!(f, "pub enum RigAsset {{")?;
+    writeln!(f, "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(f, "pub enum Rig {{")?;
 
+    let mut first = true;
     for entry in &entries {
         let dir_name = entry.file_name();
         let dir_name_str = dir_name.to_string_lossy();
@@ -438,6 +422,12 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         }
 
         let variant_name = sanitize_name(&dir_name_str);
+
+        // Mark first variant as default
+        if first {
+            writeln!(f, "    #[default]")?;
+            first = false;
+        }
         let mut props = Vec::new();
 
         props.push(format!("rig_json = \"make_human/rigs/standard/{}/{}.rig.json\"", dir_name_str, dir_name_str));
@@ -458,7 +448,7 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f)?;
 
     // Generate helper methods
-    writeln!(f, "impl RigAsset {{")?;
+    writeln!(f, "impl Rig {{")?;
 
     writeln!(f, "    /// Get .rig.json path")?;
     writeln!(f, "    pub fn rig_json_path(&self) -> &str {{")?;
@@ -477,14 +467,6 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "        self.get_str(\"skeleton_glb\")")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
-
-    writeln!(f, "    /// Pick random variant")?;
-    writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-    writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-    writeln!(f, "        use strum::IntoEnumIterator;")?;
-    writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-    writeln!(f, "    }}")?;
-
     writeln!(f, "}}")?;
     writeln!(f)?;
 
@@ -728,12 +710,6 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "        if self.is_single() {{ (0.0, 1.0) }} else {{ (-1.0, 1.0) }}")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
-        writeln!(f, "    /// Pick random variant")?;
-        writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-        writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-        writeln!(f, "        use strum::IntoEnumIterator;")?;
-        writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-        writeln!(f, "    }}")?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }
@@ -995,15 +971,6 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
-
-    // Random
-    writeln!(f, "    /// Pick random variant")?;
-    writeln!(f, "    pub fn random(rng: &mut impl rand::Rng) -> Self {{")?;
-    writeln!(f, "        use rand::prelude::IndexedRandom;")?;
-    writeln!(f, "        use strum::IntoEnumIterator;")?;
-    writeln!(f, "        Self::iter().collect::<Vec<_>>().choose(rng).copied().unwrap()")?;
-    writeln!(f, "    }}")?;
-
     writeln!(f, "}}")?;
     writeln!(f)?;
 

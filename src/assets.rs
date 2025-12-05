@@ -1,6 +1,7 @@
 use crate::{components::*, loaders::*};
 use bevy::prelude::*;
 use bevy_inspector_egui::{inspector_options::std_options::NumberDisplay, prelude::*};
+#[allow(unused_imports)]
 use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 
 // See build.rs for more details
@@ -9,11 +10,12 @@ include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 #[derive(Component)]
 pub struct CharacterAssets {
-    pub proxy_obj_base: Handle<ObjBaseMesh>,
-    pub proxy_proxy: Handle<ProxyAsset>,
+    /// Proxy mesh obj+verts (None = use base mesh)
+    pub skin_obj_base: Option<Handle<ObjBaseMesh>>,
+    pub skin_proxy: Option<Handle<ProxyAsset>>,
     pub skin_material: Handle<StandardMaterial>,
-    pub parts: Vec<MHItem>,    
-    
+    pub parts: Vec<MHItem>,
+
     pub rig_bones: Handle<RigBones>,
     pub rig_weights: Handle<SkinningWeights>,
     /// Optional skeleton GLB for base rotations (animation compatibility)
@@ -26,53 +28,67 @@ pub struct CharacterAssets {
     pub clothing_offset: f32,
 }
 
+/// Query params for building CharacterAssets from components
+pub struct CharacterComponents<'a> {
+    pub rig: &'a Rig,
+    pub skin: &'a Skin,
+    pub eyes: &'a Eyes,
+    pub eyebrows: &'a Eyebrows,
+    pub eyelashes: &'a Eyelashes,
+    pub teeth: &'a Teeth,
+    pub tongue: &'a Tongue,
+    pub hair: Option<&'a Hair>,
+    pub clothing: &'a Clothing,
+    pub morphs: &'a Morphs,
+    pub phenotype: &'a Phenotype,
+    pub clothing_offset: f32,
+}
+
 impl CharacterAssets {
-    /// Create from config - declarative loading
-    pub fn from_config(
-        config: &HumanConfig,
-        phenotype: &Phenotype,
+    /// Create from individual components
+    pub fn from_components(
+        c: CharacterComponents,
         asset_server: &AssetServer,
     ) -> Self {
-                
         let mut parts = vec![
             MHItem::load(
                 MHTag::Eyes,
-                config.eyes.mhclo_path().to_string(),
-                config.eye_material.mhmat_path().to_string(),
-                config.eyes.obj_path().to_string(),
+                c.eyes.mesh.mhclo_path().to_string(),
+                c.eyes.material.mhmat_path().to_string(),
+                c.eyes.mesh.obj_path().to_string(),
                 asset_server,
             ),
             MHItem::load(
                 MHTag::Teeth,
-                config.teeth.mhclo_path().to_string(),
-                config.teeth.mhmat_path().to_string(),
-                config.teeth.obj_path().to_string(),
+                c.teeth.0.mhclo_path().to_string(),
+                c.teeth.0.mhmat_path().to_string(),
+                c.teeth.0.obj_path().to_string(),
                 asset_server,
             ),
             MHItem::load(
                 MHTag::Tongue,
-                config.tongue.mhclo_path().to_string(),
-                config.tongue.mhmat_path().to_string(),
-                config.tongue.obj_path().to_string(),
+                c.tongue.0.mhclo_path().to_string(),
+                c.tongue.0.mhmat_path().to_string(),
+                c.tongue.0.obj_path().to_string(),
                 asset_server,
             ),
             MHItem::load(
                 MHTag::Eyebrows,
-                config.eyebrows.mhclo_path().to_string(),
-                config.eyebrows.mhmat_path().to_string(),
-                config.eyebrows.obj_path().to_string(),
+                c.eyebrows.0.mhclo_path().to_string(),
+                c.eyebrows.0.mhmat_path().to_string(),
+                c.eyebrows.0.obj_path().to_string(),
                 asset_server,
             ),
             MHItem::load(
                 MHTag::Eyelashes,
-                config.eyelashes.mhclo_path().to_string(),
-                config.eyelashes.mhmat_path().to_string(),
-                config.eyelashes.obj_path().to_string(),
+                c.eyelashes.0.mhclo_path().to_string(),
+                c.eyelashes.0.mhmat_path().to_string(),
+                c.eyelashes.0.obj_path().to_string(),
                 asset_server,
             ),
         ];
-        
-        if let Some(hair) = config.hair {
+
+        if let Some(hair) = c.hair {
             parts.push(MHItem::load(
                 MHTag::Hair,
                 hair.mhclo_path().to_string(),
@@ -81,30 +97,28 @@ impl CharacterAssets {
                 asset_server,
             ));
         }
-        
-        for c in config.clothing.iter() {
+
+        for clothing_item in c.clothing.0.iter() {
             parts.push(MHItem::load(
-                    MHTag::Clothes,
-                    c.mhclo_path().to_string(),
-                    c.mhmat_path().to_string(),
-                    c.obj_path().to_string(),
-                    asset_server,
+                MHTag::Clothes,
+                clothing_item.mhclo_path().to_string(),
+                clothing_item.mhmat_path().to_string(),
+                clothing_item.obj_path().to_string(),
+                asset_server,
             ));
         }
-        
-        Self {
-            proxy_obj_base: asset_server.load(config.proxy_mesh.obj_path().to_string()),
-            proxy_proxy: asset_server.load(config.proxy_mesh.proxy_path().to_string()),
-            skin_material: asset_server.load(config.skin.mhmat_path().to_string()),
 
-            rig_bones: asset_server.load(config.rig.rig_json_path().to_string()),
-            rig_weights: asset_server.load(config.rig.weights_json_path().to_string()),
-            skeleton_glb: config
-                .rig
+        Self {
+            skin_obj_base: c.skin.mesh.as_ref().map(|m| asset_server.load(m.obj_path().to_string())),
+            skin_proxy: c.skin.mesh.as_ref().map(|m| asset_server.load(m.proxy_path().to_string())),
+            skin_material: asset_server.load(c.skin.material.mhmat_path().to_string()),
+
+            rig_bones: asset_server.load(c.rig.rig_json_path().to_string()),
+            rig_weights: asset_server.load(c.rig.weights_json_path().to_string()),
+            skeleton_glb: c.rig
                 .skeleton_glb_path()
                 .map(|p| asset_server.load(p.to_string())),
-            morphs: config
-                .morphs
+            morphs: c.morphs.0
                 .iter()
                 .filter_map(|Morph { target, value }| {
                     target
@@ -112,12 +126,12 @@ impl CharacterAssets {
                         .map(|path| (asset_server.load(path.to_string()), *value))
                 })
                 .collect(),
-            phenotype_morphs: phenotype
+            phenotype_morphs: c.phenotype
                 .all_targets()
                 .into_iter()
                 .map(|(path, weight)| (asset_server.load(path), weight))
                 .collect(),
-            clothing_offset: config.clothing_offset,            
+            clothing_offset: c.clothing_offset,
             parts,
         }
     }
@@ -125,12 +139,17 @@ impl CharacterAssets {
     /// Get all handles for progress tracking
     pub fn all_handles(&self) -> Vec<UntypedHandle> {
         let mut handles = vec![
-            self.proxy_obj_base.clone().untyped(),
-            self.proxy_proxy.clone().untyped(),
             self.skin_material.clone().untyped(),
             self.rig_bones.clone().untyped(),
             self.rig_weights.clone().untyped(),
         ];
+
+        if let Some(ref h) = self.skin_obj_base {
+            handles.push(h.clone().untyped());
+        }
+        if let Some(ref h) = self.skin_proxy {
+            handles.push(h.clone().untyped());
+        }
 
         for part in &self.parts {
             handles.extend(part.handles());
@@ -236,22 +255,22 @@ pub trait HasThumbnail {
     fn thumbnail_path(&self) -> Option<&'static str>;
 }
 
-impl HasThumbnail for ProxyMesh {
+impl HasThumbnail for SkinMesh {
     fn thumbnail_path(&self) -> Option<&'static str> {
         self.get_str("thumb")
     }
 }
-impl HasThumbnail for SkinAsset {
+impl HasThumbnail for SkinMaterial {
     fn thumbnail_path(&self) -> Option<&'static str> {
         self.get_str("thumb")
     }
 }
-impl HasThumbnail for HairAsset {
+impl HasThumbnail for Hair {
     fn thumbnail_path(&self) -> Option<&'static str> {
         self.get_str("thumb")
     }
 }
-impl HasThumbnail for EyesAsset {
+impl HasThumbnail for EyesMesh {
     fn thumbnail_path(&self) -> Option<&'static str> {
         self.get_str("thumb")
     }
@@ -276,12 +295,12 @@ impl HasThumbnail for TongueAsset {
         self.get_str("thumb")
     }
 }
-impl HasThumbnail for RigAsset {
+impl HasThumbnail for Rig {
     fn thumbnail_path(&self) -> Option<&'static str> {
         None
     } // No thumbs for rigs
 }
-impl HasThumbnail for EyeMaterialAsset {
+impl HasThumbnail for EyesMaterial {
     fn thumbnail_path(&self) -> Option<&'static str> {
         None
     } // No thumbs for eye materials

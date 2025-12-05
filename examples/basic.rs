@@ -56,33 +56,35 @@ fn setup(
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    commands
-        .spawn((
-            Name::new("Bob"),
-            Human,
-            HumanConfig {
-                proxy_mesh: ProxyMesh::MaleGeneric,
-                rig: RigAsset::Mixamo,
-                skin: SkinAsset::YoungCaucasianMale,
-                eyes: EyesAsset::LowPoly,
-                eye_material: EyeMaterialAsset::Bluegreen,
-                hair: Some(HairAsset::CulturalibreHair02),
-                clothing: vec![
-                    ClothingAsset::ToigoMaleSuit3,
-                    ClothingAsset::ToigoAnkleBootsMale,
-                ],
-                morphs: vec![],
-                ..default()
-            },
-            // TODO: this need more work, logic on what morphs to apply based on phenotype is wothless and needs to be determinsitic
-            // Customize the body shape via Phenotype
-            Phenotype {
-                gender: 1.0,
-                age: 0.5,
-                muscle: 0.3,
-                weight: 0.4,
-                ..default()
-            },            
-            Transform::from_xyz(0.0, 0.0, 0.0),
-        ));
+    commands.spawn((
+        Name::new("Bob"),
+        Human,
+        Rig::Mixamo,
+        Skin {
+            mesh: Some(SkinMesh::MaleGeneric),
+            material: SkinMaterial::YoungCaucasianMale,
+        },
+        Eyes {
+            mesh: EyesMesh::LowPoly,
+            material: EyesMaterial::Bluegreen,
+        },
+        Hair::Bob02,
+        Eyebrows(EyebrowsAsset::Eyebrow006),
+        Eyelashes(EyelashesAsset::Eyelashes01),
+        Teeth(TeethAsset::TeethBase),
+        Tongue(TongueAsset::Tongue01),
+        Clothing(vec![
+            ClothingAsset::ToigoMaleSuit3,
+            ClothingAsset::ToigoAnkleBootsMale,
+        ]),
+        Morphs::default(),
+        Phenotype {
+            gender: 1.0,
+            age: 0.5,
+            muscle: 0.3,
+            weight: 0.4,
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
 }

@@ -352,6 +352,61 @@ pub fn apply_skinning_weights_via_mhclo(
     mesh
 }
 
+/// Apply morphed vertices to base mesh and add skinning weights
+/// Used when no proxy mesh is specified
+pub fn apply_morphed_base_mesh(
+    base_mesh: &Mesh,
+    mhid_lookup: &[u16],
+    morphed_vertices: &[Vec3],
+    skeleton: &Skeleton,
+    skinning_weights: &SkinningWeights,
+) -> Mesh {
+    let mesh_verts = get_vertex_positions(base_mesh);
+    let mesh_vert_count = mesh_verts.len();
+
+    // Apply morphed vertices via mhid_lookup
+    let mut final_verts = mesh_verts.clone();
+    for (mesh_i, &obj_i) in mhid_lookup.iter().enumerate() {
+        if (obj_i as usize) < morphed_vertices.len() {
+            final_verts[mesh_i] = morphed_vertices[obj_i as usize];
+        }
+    }
+
+    // Build mesh with morphed positions
+    let mut mesh = build_fitted_mesh(&final_verts, base_mesh);
+
+    // Add skinning weights - base mesh vertices map directly via mhid_lookup
+    let max_weight_vertex = skinning_weights.max_vertex_index();
+    let vertex_count = max_weight_vertex + 1;
+    let base_vertex_weights = skinning_weights.to_vertex_weights(&skeleton.bone_indices, vertex_count);
+
+    let mut indices = vec![[0u16; 4]; mesh_vert_count];
+    let mut weights = vec![[0.0f32; 4]; mesh_vert_count];
+
+    for (mesh_idx, &obj_idx) in mhid_lookup.iter().enumerate() {
+        let base_idx = obj_idx as usize;
+        if base_idx < base_vertex_weights.len() {
+            let bone_weights: Vec<_> = base_vertex_weights[base_idx].clone();
+            apply_top4_weights(&bone_weights, &mut indices[mesh_idx], &mut weights[mesh_idx]);
+        } else {
+            // Default to bone 0
+            indices[mesh_idx][0] = 0;
+            weights[mesh_idx][0] = 1.0;
+        }
+    }
+
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_JOINT_INDEX,
+        VertexAttributeValues::Uint16x4(indices),
+    );
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_JOINT_WEIGHT,
+        VertexAttributeValues::Float32x4(weights),
+    );
+
+    mesh
+}
+
 /// Helper to apply top 4 bone weights to mesh vertex
 fn apply_top4_weights(
     bone_weights: &[(usize, f32)],

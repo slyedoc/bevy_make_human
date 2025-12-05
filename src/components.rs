@@ -1,56 +1,78 @@
-use bevy::prelude::*;
-use bevy_inspector_egui::prelude::*;
-use bevy_inspector_egui::inspector_options::std_options::NumberDisplay;
 use crate::assets::*;
+use bevy::prelude::*;
+use bevy_inspector_egui::inspector_options::std_options::NumberDisplay;
+use bevy_inspector_egui::prelude::*;
 
 #[derive(Component, Default)]
-#[require(HumanConfig, Phenotype, Transform, Visibility)]
+#[require(
+    Phenotype,
+    Transform,
+    Visibility,
+    Rig,
+    Skin,
+    Clothing,
+    ClothingOffset,
+    FloorOffset
+)]
 pub struct Human;
 
-// TODO: break into componets?
-#[derive(Component, Reflect, InspectorOptions)]
-#[reflect(Component, InspectorOptions)]
-pub struct HumanConfig {
-    pub proxy_mesh: ProxyMesh,
-    pub rig: RigAsset,
-    pub skin: SkinAsset,
-    pub hair: Option<HairAsset>,
-    pub eyes: EyesAsset,
-    pub eye_material: EyeMaterialAsset,
-    pub eyebrows: EyebrowsAsset,
-    pub eyelashes: EyelashesAsset,
-    pub teeth: TeethAsset,
-    pub tongue: TongueAsset,
-    pub clothing: Vec<ClothingAsset>,
-    pub morphs: Vec<Morph>,
-    /// Offset to push clothing outward along surface normal (prevents skin poke-through)
-    #[inspector(min = 0.0, max = 0.01, speed = 0.0001, display = NumberDisplay::Slider)]
-    pub clothing_offset: f32,
-    /// Floor offset for collider (accounts for shoes/bare feet)
-    #[inspector(min = -0.1, max = 0.1, speed = 0.001, display = NumberDisplay::Slider)]
-    pub floor_offset: f32,
+#[derive(Component, Clone)]
+pub struct Skin {
+    /// Optional proxy mesh. If None, uses base mesh.
+    pub mesh: Option<SkinMesh>,
+    pub material: SkinMaterial,
 }
 
-impl Default for HumanConfig {
+impl Default for Skin {
     fn default() -> Self {
         Self {
-            proxy_mesh: ProxyMesh::FemaleGeneric,
-            rig: RigAsset::Default, // CMU Motion Builder rig - maps to SMPL joints
-            skin: SkinAsset::YoungCaucasianFemale,
-            hair: Some(HairAsset::GrinsegoldWigBowTie),
-            eyes: EyesAsset::LowPoly,
-            eyelashes: EyelashesAsset::Eyelashes01,
-            teeth: TeethAsset::TeethBase,
-            tongue: TongueAsset::Tongue01,
-            eye_material: EyeMaterialAsset::Brown,
-            eyebrows: EyebrowsAsset::Eyebrow006,
-            clothing: vec![ClothingAsset::ElvsSarongCoverUp],
-            morphs: vec![],
-            clothing_offset: 0.001,
-            floor_offset: 0.0,
+            mesh: None,
+            material: SkinMaterial::YoungCaucasianFemale,
         }
     }
 }
+
+// === PARTS ===
+
+#[derive(Component, Clone, Copy)]
+pub struct Eyes {
+    pub mesh: EyesMesh,
+    pub material: EyesMaterial,
+}
+
+// Hair is generated in build.rs with Component derive
+
+#[derive(Component, Clone, Copy)]
+pub struct Eyebrows(pub EyebrowsAsset);
+
+#[derive(Component, Clone, Copy)]
+pub struct Eyelashes(pub EyelashesAsset);
+
+#[derive(Component, Clone, Copy)]
+pub struct Teeth(pub TeethAsset);
+
+#[derive(Component, Clone, Copy)]
+pub struct Tongue(pub TongueAsset);
+
+#[derive(Component, Clone, Default)]
+pub struct Clothing(pub Vec<ClothingAsset>);
+
+// === SETTINGS ===
+
+#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions)]
+#[reflect(Component, InspectorOptions)]
+pub struct ClothingOffset(
+    #[inspector(min = 0.0, max = 0.01, speed = 0.0001, display = NumberDisplay::Slider)] pub f32,
+);
+
+#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions)]
+#[reflect(Component, InspectorOptions)]
+pub struct FloorOffset(
+    #[inspector(min = -0.1, max = 0.1, speed = 0.001, display = NumberDisplay::Slider)] pub f32,
+);
+
+#[derive(Component, Clone, Default)]
+pub struct Morphs(pub Vec<Morph>);
 
 // Marker components body parts
 #[derive(Component, Copy, Clone, strum::Display, PartialEq, Eq, Debug)]
@@ -64,7 +86,7 @@ pub enum MHTag {
     Eyebrows,
     Eyelashes,
     Clothes,
-    Collider
+    Collider,
 }
 
 #[derive(Component, Default)]
@@ -72,36 +94,35 @@ pub struct HumanPart;
 
 #[derive(Component)]
 #[require(MHTag::Skin)]
-pub struct SkinMesh;
+pub struct SkinPart;
 
 #[derive(Component)]
 #[require(MHTag::Hair)]
-pub struct HairMesh;
+pub struct HairPart;
 
 #[derive(Component)]
 #[require(MHTag::Eyes)]
-pub struct EyesMesh;
+pub struct EyesPart;
 
 #[derive(Component)]
 #[require(MHTag::Teeth)]
-pub struct TeethMesh;
+pub struct TeethPart;
 
 #[derive(Component)]
 #[require(MHTag::Tongue)]
-pub struct TongueMesh;
+pub struct TonguePart;
 
 #[derive(Component)]
 #[require(MHTag::Eyebrows)]
-pub struct EyebrowsMesh;
+pub struct EyebrowsPart;
 
 #[derive(Component)]
 #[require(MHTag::Eyelashes)]
-pub struct EyelashesMesh;
+pub struct EyelashesPart;
 
 #[derive(Component)]
 #[require(MHTag::Clothes)]
-pub struct ClothesMesh;
-
+pub struct ClothesPart;
 
 // TODO: Below Here, only used in raven_ai for now
 
