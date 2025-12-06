@@ -1,6 +1,4 @@
-// TODO: Most of these should go away once we get BSN
 
-mod faceshapes;
 mod mhclo;
 mod mhmat;
 mod morph_target;
@@ -14,7 +12,6 @@ mod rig;
 
 #[allow(unused_imports)]
 pub use self::{
-    faceshapes::*,
     mhclo::*,
     mhmat::*,
     morph_target::*,
