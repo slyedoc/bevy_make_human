@@ -9,7 +9,7 @@ There is also [Humentity](https://github.com/emberlightstudios/Humentity) that y
 
 ## TLDR; 
 
-Requires git lfs to clone this repo due to  assets.
+Requires git lfs to clone this repo due to assets.
 
 ```bash
 Unlike most bevy plugins, you will need to copy assets/make_human from this repo to your own project's assets folder to use this.
@@ -41,18 +41,20 @@ I will most likely remove most these and give instructions to download and zip b
 
 ## TODO
 
-  - [ ] Script to create meta files
-
+  - [ ] Script to create meta files for any obj and json files in assets/make_human
   - [ ] Animations
     - [ ] Aabb
     - [ ] Walk cycles
     - [ ] Facial rigs
-  - [ ] [Delete Groups](https://static.makehumancommunity.org/assets/creatingassets/makeclothes/makeclothes_deletegroups.html)
-  - [ ] Allow for morphes via Shared meshes, currently applying morphies by constructing new mesh, so in effect every mesh is unique.  Materials should still be be shared though.
+  - [ ] support [Delete Groups](https://static.makehumancommunity.org/assets/creatingassets/makeclothes/makeclothes_deletegroups.html) instead of ClothingOffset
+  - [ ] Morphs
+    - [ ] Refacter phenotype completely, MorphTargets works much better
+    - [ ] Allow some to be used as MorphWeights, 
+        - limit to 64?
     
 ## License
 
-All assets come from make human community and mpfb2 and are licensed under:
+All assets come from make human community and mpfb2 and are licensed under :
 
 * CC0 1.0 Universal [LICENSE-CCO](LICENSE-CCO)
  see [mpfb2](https://github.com/makehumancommunity/mpfb2/blob/master/LICENSE.md):

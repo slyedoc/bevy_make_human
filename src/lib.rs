@@ -2,20 +2,19 @@ pub mod assets;
 pub mod components;
 #[cfg(feature = "debug_draw")]
 pub mod debug_draw;
-pub mod events;
 pub mod loaders;
 pub mod skeleton;
 pub mod util;
 
-use crate::{assets::*, components::*, events::*, loaders::*, skeleton::*, util::*};
+use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
     pub use crate::debug_draw::*;
     #[allow(unused_imports)]
     pub use crate::{
-        MHState, MakeHumanPlugin, assets::*, components::*, events::*, loaders::*, skeleton::*,
-        util::*,
+        CharacterComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*,
+        skeleton::*, util::*,
     };
 }
 
@@ -121,13 +120,15 @@ pub struct BaseMeshAssets {
     pub obj: Handle<ObjBaseMesh>,
     #[asset(path = "make_human/mesh_metadata/basemesh.vertex_groups.json")]
     pub vertex_groups: Handle<VertexGroups>,
+    // TODO: will most likely need this later
     // #[asset(path = "make_human/mesh_metadata/hm08_config.json")]
     // pub config: Handle<BasemeshConfig>,
 }
 
 #[derive(Resource, Default)]
 pub struct BaseMesh {
-    pub mesh: Handle<Mesh>,
+    // TODO: Dont currently need, remove?
+    pub _mesh: Handle<Mesh>,
     /// The vertices in the base mesh
     pub vertices: Vec<Vec3>,
     /// Maps Bevy mesh vertex idx -> MH obj vertex idx (handles UV seam duplicates)
@@ -156,7 +157,7 @@ fn build_basemesh(
         let vtx_data = get_vertex_positions(&obj_base_mesh.mesh);
         let vertex_map = generate_vertex_map(&obj_base_mesh.vertices, &vtx_data);
         let mhid_lookup = generate_mhid_lookup(&vertex_map);
-        
+
         PrepareBasemeshOutput { mhid_lookup }
     });
     commands.insert_resource(PrepareBasemeshTask(task));
@@ -184,7 +185,7 @@ fn poll_basemesh_task(
             .clone();
 
         commands.insert_resource(BaseMesh {
-            mesh: meshes.add(obj_base_mesh.mesh.clone()),
+            _mesh: meshes.add(obj_base_mesh.mesh.clone()),
             vertices: obj_base_mesh.vertices.clone(),
             mhid_lookup,
             vertex_groups: vg.clone(),
@@ -201,10 +202,9 @@ pub struct CharacterProcessingTask(Task<CharacterProcessingOutput>);
 
 /// All data needed for character processing (extracted from assets)
 struct CharacterProcessingInput {
-    
     base_vertices: Vec<Vec3>,
     base_vertex_groups: VertexGroups,
-    
+
     // Morphs
     phenotype_morphs: Vec<(MorphTargetData, f32)>,
     regular_morphs: Vec<(MorphTargetData, f32)>,
@@ -326,7 +326,7 @@ fn init_existing_character(
         phenotype,
         clothing_offset,
     ) in query.iter()
-    {        
+    {
         commands.entity(e).insert(HumanAssets::from_components(
             HumanComponents {
                 rig,

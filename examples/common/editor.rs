@@ -75,6 +75,9 @@ impl Plugin for EditorPlugin {
         )
         .insert_resource(DebugPickingMode::Normal)
         .add_systems(Startup, setup)
+        .add_systems(Startup, || {
+            info!("Press F1-F5 to toggle various editor features");
+        })
         .add_systems(
             EguiPrimaryContextPass,
             inspector_ui.run_if(in_state(EditorState::Enabled)),

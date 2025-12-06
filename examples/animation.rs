@@ -1,10 +1,10 @@
 #[path ="common/mod.rs"]
 mod common;
-use std::any::TypeId;
+use std::{any::TypeId, f32::consts::PI};
 
 pub use common::*;
 
-use bevy::{animation::AnimationTargetId, platform::collections::HashMap, prelude::*};
+use bevy::{animation::{AnimationTargetId, animated_field}, platform::collections::HashMap, prelude::*};
 use avian3d::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_make_human::prelude::*;
@@ -13,16 +13,9 @@ fn main() -> AppExit {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            // for faster load times, requires: "bevy/asset_processor",
-            // .set(AssetPlugin {  
-            //     mode: AssetMode::Processed,
-            //     ..default()
-            // }),
-
             PhysicsPlugins::default(),
             MakeHumanPlugin::default(),
             CommonPlugin, // camera and egui editor
-
         ))
         .init_collection::<GltfAnimationAssets>()
         .add_systems(Startup, setup)
@@ -157,8 +150,6 @@ fn apply_gltf_animation(
     // Build source->target AnimationTargetId mapping
     // With Humentity's base rotation formula, animations should work directly without runtime corrections
     let mut id_map: HashMap<AnimationTargetId, AnimationTargetId> = HashMap::default();
-
-
 
     for (source_name, _node_handle) in &gltf.named_nodes {
         // Special case: Armature is the rig root, not a bone
