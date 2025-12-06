@@ -67,10 +67,10 @@ fn setup(
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        // Clothing(vec![
-        //     ClothingAsset::ToigoMaleSuit3,
-        //     ClothingAsset::ToigoAnkleBootsMale,
-        // ]),
+        Clothing(vec![
+            ClothingAsset::ToigoMaleSuit3,
+            ClothingAsset::ToigoAnkleBootsMale,
+        ]),
         Phenotype {
             gender: 1.0,
             age: 0.5,

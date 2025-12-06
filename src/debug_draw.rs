@@ -1,5 +1,5 @@
 use bevy::{animation::AnimationTarget, color::palettes::css, prelude::*};
-use bevy_mod_billboard::BillboardText;
+use bevy_mod_billboard::prelude::*;
 
 /// Gizmo config for skeleton bone visualization
 #[derive(Reflect, GizmoConfigGroup)]
@@ -86,20 +86,28 @@ impl Plugin for MakeHumanDebugPlugin {
         app.add_systems(
             Update,
             (
-                draw_skeleton_gizmos
-                    .run_if(|store: Res<GizmoConfigStore>| store.config::<SkeletonGizmos>().0.enabled),
-                draw_joint_axes_gizmos
-                    .run_if(|store: Res<GizmoConfigStore>| store.config::<JointAxesGizmos>().0.enabled),
+                draw_skeleton_gizmos.run_if(|store: Res<GizmoConfigStore>| {
+                    store.config::<SkeletonGizmos>().0.enabled
+                }),
+                draw_joint_axes_gizmos.run_if(|store: Res<GizmoConfigStore>| {
+                    store.config::<JointAxesGizmos>().0.enabled
+                }),
                 manage_joint_labels,
             ),
         );
+    }
+
+    fn finish(&self, app: &mut App) {
+        if !app.is_plugin_added::<BillboardPlugin>() {
+            app.add_plugins(BillboardPlugin);
+        }
     }
 }
 
 /// Draw skeleton bones as gizmos for debugging
 /// Reads from actual bone entity GlobalTransforms (animated)
 pub fn draw_skeleton_gizmos(
-    bones: Query<(&GlobalTransform, Option<&ChildOf>, Option<&Name>), With<AnimationTarget>>,
+    bones: Query<(&GlobalTransform, Option<&ChildOf>), With<AnimationTarget>>,
     parent_transforms: Query<&GlobalTransform>,
     mut gizmos: Gizmos<SkeletonGizmos>,
     store: Res<GizmoConfigStore>,
@@ -107,17 +115,8 @@ pub fn draw_skeleton_gizmos(
 ) {
     let (_, config) = store.config::<SkeletonGizmos>();
 
-    for (global_transform, parent, name) in bones.iter() {
+    for (global_transform, parent) in bones.iter() {
         let head_world = global_transform.translation();
-
-        // Debug log arm positions once
-        if !*logged {
-            if let Some(n) = name {
-                if n.as_str().contains("Arm") && !n.as_str().contains("Fore") {
-                    info!("DEBUG GlobalTransform {}: {:?}", n.as_str(), head_world);
-                }
-            }
-        }
 
         // Color based on whether bone has parent
         let color = if parent.is_none() {
@@ -135,7 +134,11 @@ pub fn draw_skeleton_gizmos(
         }
 
         // Draw a small sphere at the joint position
-        gizmos.sphere(Isometry3d::from_translation(head_world), config.joint_radius, color);
+        gizmos.sphere(
+            Isometry3d::from_translation(head_world),
+            config.joint_radius,
+            color,
+        );
     }
     *logged = true;
 }
@@ -153,9 +156,21 @@ pub fn draw_joint_axes_gizmos(
         let rot = transform.to_scale_rotation_translation().1;
 
         // RGB = XYZ convention (configurable)
-        gizmos.line(pos, pos + rot * Vec3::X * config.axis_length, config.x_color);
-        gizmos.line(pos, pos + rot * Vec3::Y * config.axis_length, config.y_color);
-        gizmos.line(pos, pos + rot * Vec3::Z * config.axis_length, config.z_color);
+        gizmos.line(
+            pos,
+            pos + rot * Vec3::X * config.axis_length,
+            config.x_color,
+        );
+        gizmos.line(
+            pos,
+            pos + rot * Vec3::Y * config.axis_length,
+            config.y_color,
+        );
+        gizmos.line(
+            pos,
+            pos + rot * Vec3::Z * config.axis_length,
+            config.z_color,
+        );
     }
 }
 
@@ -163,28 +178,19 @@ pub fn draw_joint_axes_gizmos(
 fn manage_joint_labels(
     mut commands: Commands,
     store: Res<GizmoConfigStore>,
-    unlabeled_joints: Query<(Entity, Option<&Name>, &GlobalTransform), (With<AnimationTarget>, Without<HasJointLabel>)>,
+    unlabeled_joints: Query<
+        (Entity, Option<&Name>, &GlobalTransform),
+        (With<AnimationTarget>, Without<HasJointLabel>),
+    >,
     labeled_joints: Query<Entity, (With<AnimationTarget>, With<HasJointLabel>)>,
     labels: Query<Entity, With<JointNameLabel>>,
     mut label_transforms: Query<&mut Transform, With<JointNameLabel>>,
-    mut logged: Local<bool>,
 ) {
-    // Debug log arm GlobalTransform positions
-    if !*logged {
-        for (_, name, global) in &unlabeled_joints {
-            if let Some(n) = name {
-                if n.as_str().contains("Arm") && !n.as_str().contains("Fore") {
-                    info!("LABEL DEBUG {}: GlobalTransform = {:?}", n.as_str(), global.translation());
-                }
-            }
-        }
-        *logged = true;
-    }
-
     let (gizmo_config, config) = store.config::<JointAxesGizmos>();
 
     if gizmo_config.enabled {
         // Spawn labels for any joints that don't have them yet (uses default font)
+        //let font: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
         let font: Handle<Font> = Handle::default();
 
         for (entity, name, _) in &unlabeled_joints {
@@ -207,6 +213,7 @@ fn manage_joint_labels(
                     },
                 ))
                 .with_child((
+                    Name::new("DebugLabel"),
                     TextSpan::new(label),
                     TextFont::from(font.clone()).with_font_size(16.0),
                     TextColor(css::WHITE.into()),

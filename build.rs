@@ -17,18 +17,21 @@ fn main() -> io::Result<()> {
     // }
 
     let assets_dir = get_base_path().join("assets").join("make_human");
-    println!("cargo:warning=Env {:?}", assets_dir.as_os_str());
+    
     println!("cargo:rerun-if-changed=build.rs");    
     println!("cargo:rerun-if-changed={:?}", assets_dir.as_os_str());
+    
+    if !assets_dir.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("assets dir not found: {:?}", assets_dir),
+        ));
+    }
     
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("assets.rs");
     let mut f = File::create(dest_path)?;
-
-    // Import Component for enums that derive it
-    writeln!(f, "use bevy::prelude::Component;")?;
-    writeln!(f)?;
-
+    
     // Proxymeshes -> SkinMesh
     generate_asset_enum(&mut f, &assets_dir, "proxymeshes", "SkinMesh", &AssetFilePattern {
         required: &["obj", "proxy", "thumb"],

@@ -48,6 +48,8 @@ impl AssetLoader for MhmatLoader {
         _settings: &Self::Settings,
         load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
+        
+        // TODO: Everything below here is make up by Claude, come back to this
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
 
@@ -74,7 +76,7 @@ impl AssetLoader for MhmatLoader {
         // Flags
         let mut backface_cull = true;
         let mut transparent = false;
-        let mut shadeless = false;
+        let mut _shadeless = false;
         let mut alpha_to_coverage = false;
 
         let buf_reader = BufReader::new(&bytes[..]);
@@ -159,7 +161,7 @@ impl AssetLoader for MhmatLoader {
                     transparent = parse_bool(parts[1]);
                 }
                 "shadeless" if parts.len() >= 2 => {
-                    shadeless = parse_bool(parts[1]);
+                    _shadeless = parse_bool(parts[1]);
                 }
                 "alphaToCoverage" if parts.len() >= 2 => {
                     alpha_to_coverage = parse_bool(parts[1]);
@@ -230,8 +232,9 @@ impl AssetLoader for MhmatLoader {
             depth_map: bump_texture,
             alpha_mode,
             cull_mode,
-            double_sided: !backface_cull,
-            unlit: shadeless,
+            // TODO: these seems wrong alot
+            double_sided:  false, // !backface_cull,
+            unlit: false, // shadeless,
             ..default()
         })
     }

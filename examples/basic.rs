@@ -5,6 +5,7 @@ pub use common::*;
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use bevy_make_human::prelude::*;
+use bevy_mod_mipmap_generator::{MipmapGeneratorPlugin, generate_mipmaps};
 
 fn main() -> AppExit {
     App::new()
@@ -16,12 +17,14 @@ fn main() -> AppExit {
             //     ..default()
             // }),
 
+            MipmapGeneratorPlugin,
             PhysicsPlugins::default(),
             MakeHumanPlugin::default(),
             CommonPlugin, // camera and egui editor
 
         ))
         .add_systems(Startup, setup)
+        .add_systems(Update, generate_mipmaps::<StandardMaterial>) // greatly helps
         .run()
 }
 
@@ -65,22 +68,52 @@ fn setup(
             material: SkinMaterial::YoungCaucasianMale,
         },
         Eyes::LowPolyBluegreen,
-        //Hair::Bob02,
+        Hair::CulturalibreHair02,
         Eyebrows::Eyebrow006,
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        // Clothing(vec![
-        //     ClothingAsset::ToigoMaleSuit3,
-        //     ClothingAsset::ToigoAnkleBootsMale,
-        // ]),
+        Clothing(vec![
+             ClothingAsset::ToigoMaleSuit3,
+             ClothingAsset::ToigoAnkleBootsMale,
+        ]),
         Phenotype {
+            race: Race::Caucasian,
             gender: 1.0,
             age: 0.5,
             muscle: 0.3,
             weight: 0.4,
             ..default()
         },
-        Transform::from_xyz(0.0, 0.0, 0.0),
+        Transform::from_xyz(-1.0, 0.0, 0.0),
+    ));
+    
+    commands.spawn((
+        Name::new("Sarah"),
+        Human,
+        Rig::Mixamo,
+        Skin {
+            mesh: SkinMesh::FemaleGeneric,
+            material: SkinMaterial::YoungCaucasianFemale,
+        },
+        Eyes::LowPolyBluegreen,
+        Hair::ElvsLaraHair,
+        Eyebrows::Eyebrow006,
+        Eyelashes::Eyelashes04,
+        Teeth::TeethBase,
+        Tongue::Tongue01,
+        Clothing(vec![
+             ClothingAsset::ElvsGoddessDress8,
+             //ClothingAsset::ToigoAnkleBootsMale,
+        ]),
+        Phenotype {
+            race: Race::Caucasian,
+            gender: 0.0,
+            age: 0.5,
+            muscle: 0.3,
+            weight: 0.4,
+            ..default()
+        },
+        Transform::from_xyz(1.0, 0.0, 0.0),
     ));
 }

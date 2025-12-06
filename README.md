@@ -9,18 +9,20 @@ There is also [Humentity](https://github.com/emberlightstudios/Humentity) that y
 
 ## TLDR; 
 
-Requires git lfs to clone this repo due to assets.
+> Requires git lfs to clone this repo due to assets.
 
-```bash
-Unlike most bevy plugins, you will need to copy assets/make_human from this repo to your own project's assets folder to use this.
+You will need to copy assets/make_human from this repo to your own project's assets folder.
 
 ## Asset Enums
 
 I liked the idea of supporting any assets just by letting users drop them in the right folders and a decade plus of community assets, tuturials and tools that bevy users can utilize.  Having to use string paths to access assets is error prone and lead to runtime errors instead of compile time.
 
-To that end I created a [build.rs](build.rs) that scans the assets folders and generates enums for the assets it finds.  This way users can still drop in any assets they want and the code will update to reflect that(yes this prevents things like dynamic user generated content in realtime, but thats not a problem I have):
+To that end I created a [build.rs](build.rs) as a test of away to scans the assets dir and generates enums for the assets it finds.  This way users can still drop in any assets they want and the code will update to reflect that(yes this prevents things like dynamic user generated content in realtime, but thats not a problem I have):
 
 It looks for: ```assets/make_human```, supports BEVY_ASSET_ROOT.
+
+> Results so far: 
+> I like the component based construction, but customzing not ideal at all, maybe a one time port of assets would be better. Will most likely complete remove this with ___bsn!___ anyway.
 
 ### Adding Assets
 
@@ -41,6 +43,7 @@ I will most likely remove most these and give instructions to download and zip b
 
 ## TODO
 
+  - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
   - [ ] Script to create meta files for any obj and json files in assets/make_human
   - [ ] Animations
     - [ ] Aabb

@@ -19,7 +19,7 @@ use bevy_inspector_egui::prelude::*;
 )]
 pub struct Human;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Reflect)]
 pub struct Skin {
     pub mesh: SkinMesh,
     pub material: SkinMaterial,

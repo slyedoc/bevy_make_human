@@ -65,6 +65,7 @@ impl Plugin for MakeHumanPlugin {
         // Steps:
         // 1. On load or change, load needed assets,
         // 2. Once loaded, generate new assets(mesh) in async task
+        // 3. Apply generated assets
         .add_systems(OnEnter(MHState::Ready), init_existing_character)
         .add_systems(
             Update,
@@ -110,8 +111,11 @@ impl Plugin for MakeHumanPlugin {
             .register_type::<MHTag>()
             .register_type::<ClothingOffset>()
             .register_type::<FloorOffset>()
+            .register_type::<Skin>()
             .register_type::<Morph>();
     }
+    
+
 }
 
 #[derive(AssetCollection, Resource)]
@@ -520,7 +524,7 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
 /// Update Character and trigger CharacterGenerate
 fn update_character(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut CharacterProcessingTask, Option<&FloorOffset>)>,
+    mut query: Query<(Entity, &mut CharacterProcessingTask, &FloorOffset)>,
     children_query: Query<&Children>,
     character_part_query: Query<&MHTag>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
@@ -536,6 +540,7 @@ fn update_character(
         {
             commands.entity(entity).remove::<CharacterProcessingTask>();
 
+            // TODO: just delete all children?
             // Clean up previous character parts - collect first to avoid iterator invalidation
             let parts_to_despawn: Vec<Entity> = children_query
                 .iter_descendants(entity)
@@ -546,8 +551,7 @@ fn update_character(
             }
 
             // Spawn skeleton bones and get joint entities
-            let (_rig_entity, bone_entities) =
-                spawn_skeleton_bones(&skeleton, entity, &mut commands);
+            let bone_entities = spawn_skeleton_bones(&skeleton, entity, &mut commands);
 
             // Create SkinnedMesh component - shared by body and all parts
             let inverse_bindposes =
@@ -558,15 +562,9 @@ fn update_character(
             };
 
             // Capsule collider sized to character
-            // Total capsule height = length + 2*radius (caps on each end)
-            // Position so bottom of capsule aligns with min_y - floor_offset
-            // (positive floor_offset = shoes, raises collider; negative = bare feet, lowers collider)
-            let capsule_radius = 0.25;
-            let capsule_length = (height - (capsule_radius * 2.0)).max(0.1);
-            let collider = Collider::capsule(capsule_radius, capsule_length);
-            // Center of capsule = min_y - floor_offset + radius + length/2
-            let floor_off = floor_offset.map(|f| f.0).unwrap_or(0.0);
-            let collider_center_y = min_y - floor_off + capsule_radius + (capsule_length / 2.0);
+            let radius = 0.25;
+            let length = (height - radius * 2.0).max(0.1);            
+            let offset_y = min_y - floor_offset.0 + radius + length / 2.0;
 
             // Body mesh on main entity + faceshape deformation data
             commands
@@ -575,21 +573,36 @@ fn update_character(
                 .insert(LockedAxes::ROTATION_LOCKED)
                 .with_child((
                     Name::new("Collider"),
-                    Transform::from_translation(Vec3::Y * collider_center_y),
-                    collider,
+                    Transform::from_translation(Vec3::Y * offset_y),
+                    Collider::capsule(radius, length),
                     MHTag::Collider,
                 ));
 
             // parts
             for a in parts.into_iter() {
-                commands.spawn((
-                    ChildOf(entity),
-                    Name::new(format!("{}", a.tag)),
-                    Mesh3d(meshes.add(a.mesh)),
-                    MeshMaterial3d(a.mat),
-                    skinned_mesh.clone(),
-                    a.tag,
-                ));
+                match a.tag {                    
+                    MHTag::Skin => {
+                        commands.entity(entity)
+                        .insert((
+                            Mesh3d(meshes.add(a.mesh)),
+                            MeshMaterial3d(a.mat),
+                            skinned_mesh.clone(),                                
+                        ));                                                    
+                        
+                    },
+                    _ => {
+                        commands.spawn((
+                            ChildOf(entity),
+                            Name::new(format!("{}", a.tag)),
+                            Mesh3d(meshes.add(a.mesh)),
+                            MeshMaterial3d(a.mat),
+                            skinned_mesh.clone(),
+                            a.tag,
+                        ));
+                    }
+          
+                };
+                
             }
 
             // Notify character complete

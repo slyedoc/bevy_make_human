@@ -6,7 +6,7 @@ use bevy::{
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{VertexGroups, skeleton::{Bone, Skeleton, GltfSkeletonData} };
+use crate::{VertexGroups, skeleton::{Bone, Skeleton}};
 
 /// Rig asset - bone definitions from MakeHuman JSON
 #[derive(Asset, TypePath, Debug, Clone, Deref, DerefMut)]
@@ -133,24 +133,7 @@ impl RigBones {
         Skeleton::new(bones, hierarchy)
     }
 
-    /// Build skeleton using data from skeleton GLB
-    ///
-    /// This is the key to animation compatibility. Skeleton data comes from
-    /// a skeleton GLB exported from Blender with correct bone orientations
-    /// and armature transform.
-    ///
-    /// skeleton_data: Extracted GLTF skeleton data with rotations and armature transform
-    pub fn build_skeleton_with_skeleton_data(
-        &self,
-        mesh_vertices: &[Vec3],
-        vertex_groups: &VertexGroups,
-        skeleton_data: &GltfSkeletonData,
-    ) -> Skeleton {
-        let (bones, hierarchy) = self.build_bones_and_hierarchy(mesh_vertices, vertex_groups);
-        Skeleton::new_with_skeleton_data(bones, hierarchy, skeleton_data)
-    }
-
-    /// Build skeleton using base rotations from skeleton GLB (legacy)
+    /// Build skeleton using base rotations from skeleton GLB
     pub fn build_skeleton_with_base_rotations(
         &self,
         mesh_vertices: &[Vec3],

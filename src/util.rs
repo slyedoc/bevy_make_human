@@ -132,14 +132,6 @@ pub fn apply_proxy_fitting(
         let vertex_map = generate_vertex_map(&obj_verts, &mesh_verts);
         let mhid_lookup = generate_mhid_lookup(&vertex_map);
 
-        info!(
-            "Proxy {}: {} obj verts, {} mesh verts, {} bindings",
-            proxy.name,
-            obj_verts.len(),
-            mesh_verts.len(),
-            proxy.bindings.len()
-        );
-
         // Each binding describes how to fit one obj vertex from base mesh
         // bindings[i] = how to compute position for obj vertex i
         let transformed = proxy.compute_proxy_vertices(base_vertices);
@@ -179,12 +171,6 @@ pub fn apply_mhclo_fitting(
         // Get mesh verts
         let mesh_verts = get_vertex_positions(mesh);
 
-        info!(
-            "MHCLO {}: {} mesh verts, {} bindings",
-            mhclo.name,
-            mesh_verts.len(),
-            mhclo.bindings.len()
-        );
 
         // Compute transformed verts from bindings (obj space)
         let mut transformed = vec![Vec3::ZERO; mhclo.bindings.len()];

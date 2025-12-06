@@ -6,51 +6,24 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
-use crate::components::MHTag;
-
-/// Data extracted from a GLTF skeleton file
-pub struct GltfSkeletonData {
-    /// Global rotations for each bone (bone_name -> global_rotation)
-    pub rotations: HashMap<String, Quat>,
-    /// Transform for the Armature (root) node
-    pub armature_transform: Transform,
-}
 
 
 /// Spawn skeleton bone entities with proper hierarchy and AnimationTarget components
+/// AnimationPlayer is added to parent entity, bones are direct children
 pub fn spawn_skeleton_bones(
     skeleton: &Skeleton,
     parent: Entity,
     commands: &mut Commands,
-) -> (Entity, Vec<Entity>) {
-    // Spawn rig root with AnimationPlayer
-    // Named to match GLTF skeleton root for animation path compatibility
-    // Uses armature_transform from skeleton GLB for coordinate system conversion
-    let armature_target_id = AnimationTargetId::from_name(&Name::new("Armature"));
-    let rig_entity = commands
-        .spawn((
-            ChildOf(parent),
-            Name::new("Armature"),
-            AnimationPlayer::default(),
-            skeleton.armature_transform,
-            Visibility::default(),
-            MHTag::Armature,
-        ))
-        .id();
-
-    // Add AnimationTarget to Armature so it can receive animation
-    // (must be done after spawn to reference rig_entity)
-    commands.entity(rig_entity).insert(AnimationTarget {
-        id: armature_target_id,
-        player: rig_entity,
-    });
+) -> Vec<Entity> {
+    // Add AnimationPlayer to parent entity
+    commands.entity(parent).insert(AnimationPlayer::default());
 
     let mut bone_entities = Vec::with_capacity(skeleton.bones.len());
 
-    // Spawn all bones first (to have entity IDs for hierarchy)
+    // Spawn all bones
     for (bone_idx, bone) in skeleton.bones.iter().enumerate() {
         // Build hierarchical name path for AnimationTarget
-        // Path goes from bone -> parent -> ... -> root -> "Armature"
+        // Path: bone -> ... -> root
         let mut path = vec![Name::new(bone.name.clone())];
         let mut current_idx = bone_idx;
 
@@ -58,17 +31,17 @@ pub fn spawn_skeleton_bones(
             path.push(Name::new(skeleton.bones[parent_idx].name.clone()));
             current_idx = parent_idx;
         }
-        path.push(Name::new("Armature"));
 
         let bone_entity = commands
             .spawn((
                 Name::new(bone.name.clone()),
                 skeleton.bind_pose[bone_idx],
-                GlobalTransform::default(), // Required for skinning
+                GlobalTransform::default(),
                 AnimationTarget {
                     id: AnimationTargetId::from_names(path.iter().rev()),
-                    player: rig_entity,
+                    player: parent,
                 },
+                Visibility::default(),
             ))
             .id();
 
@@ -83,13 +56,12 @@ pub fn spawn_skeleton_bones(
                 .entity(bone_entities[parent_idx])
                 .add_children(&[bone]);
         } else {
-            // Root bones attach to rig entity
-            commands.entity(rig_entity).add_children(&[bone]);
+            // Root bones attach to parent entity
+            commands.entity(parent).add_children(&[bone]);
         }
     }
 
-    info!("Spawned {} skeleton bones", bone_entities.len());
-    (rig_entity, bone_entities)
+    bone_entities
 }
 
 /// Component storing character skeleton - bones, hierarchy, bind pose
@@ -107,9 +79,6 @@ pub struct Skeleton {
     pub inverse_bind_matrices: Vec<Mat4>,
     /// Bone name → index lookup
     pub bone_indices: HashMap<String, usize>,
-    /// Transform for the Armature (rig root) entity - from skeleton GLB
-    /// This handles coordinate system conversion (e.g., 90° X rotation for Mixamo)
-    pub armature_transform: Transform,
 }
 
 /// Single bone definition
@@ -198,48 +167,22 @@ impl Bone {
 impl Skeleton {
     /// Create new skeleton from bones and hierarchy
     pub fn new(bones: Vec<Bone>, hierarchy: Vec<Option<usize>>) -> Self {
-        Self::new_internal(bones, hierarchy, None, Transform::IDENTITY)
+        Self::new_internal(bones, hierarchy, None)
     }
 
-    /// Create skeleton using data from a reference skeleton GLB
-    ///
-    /// This is the key to animation compatibility. The skeleton_data comes from
-    /// a skeleton GLB exported from Blender (e.g., mixamo.glb) which defines
-    /// the correct bone coordinate systems and armature transform for animation.
-    ///
-    /// For each bone:
-    /// - Position comes from MH mesh (head/tail from vertex groups)
-    /// - Rotation uses Humentity's formula: correction * base_rot
-    ///   where correction aligns base_rot's Y-axis to actual bone direction
-    ///
-    /// skeleton_data: Extracted GLTF skeleton data with rotations and armature transform
-    pub fn new_with_skeleton_data(
-        bones: Vec<Bone>,
-        hierarchy: Vec<Option<usize>>,
-        skeleton_data: &GltfSkeletonData,
-    ) -> Self {
-        Self::new_internal(
-            bones,
-            hierarchy,
-            Some(&skeleton_data.rotations),
-            skeleton_data.armature_transform,
-        )
-    }
-
-    /// Create skeleton using base rotations from a reference skeleton GLB (legacy)
+    /// Create skeleton using base rotations from a reference skeleton GLB
     pub fn new_with_base_rotations(
         bones: Vec<Bone>,
         hierarchy: Vec<Option<usize>>,
         base_rotations: &HashMap<String, Quat>,
     ) -> Self {
-        Self::new_internal(bones, hierarchy, Some(base_rotations), Transform::IDENTITY)
+        Self::new_internal(bones, hierarchy, Some(base_rotations))
     }
 
     fn new_internal(
         bones: Vec<Bone>,
         hierarchy: Vec<Option<usize>>,
         base_rotations: Option<&HashMap<String, Quat>>,
-        armature_transform: Transform,
     ) -> Self {
         assert_eq!(
             bones.len(),
@@ -315,7 +258,6 @@ impl Skeleton {
             global_bind_rotations,
             inverse_bind_matrices,
             bone_indices,
-            armature_transform,
         }
     }
 
