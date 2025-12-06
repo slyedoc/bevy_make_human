@@ -15,7 +15,7 @@ use bevy::{
     },
     input::common_conditions::input_just_pressed,
     pbr::wireframe::{WireframeConfig, WireframePlugin},
-    picking::pointer::PointerInteraction,
+    picking::pointer::{PointerId, PointerInteraction},
     prelude::*,
     render::diagnostic::RenderDiagnosticsPlugin,
     window::Monitor,
@@ -24,8 +24,10 @@ use bevy_egui::{EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiCont
 use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::{
     DefaultInspectorConfigPlugin,
-    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources},
+    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources}, quick::StateInspectorPlugin,
 };
+#[allow(unused_imports)]
+use bevy_make_human::prelude::*;
 use std::ops::DerefMut;
 
 pub mod prelude {
@@ -47,6 +49,9 @@ impl Plugin for EditorPlugin {
         app.add_plugins((
             EguiPlugin::default(),
             DefaultInspectorConfigPlugin,
+            StateInspectorPlugin::<MHState>::new()
+                .run_if(in_state(EditorState::Enabled)),
+            
             PhysicsDebugPlugin,
             #[cfg(not(target_arch = "wasm32"))]
             WireframePlugin::default(),
@@ -92,13 +97,11 @@ impl Plugin for EditorPlugin {
                     toggle_wireframe,
                     
                 )
-                    .distributive_run_if(input_just_pressed(KeyCode::F3)),                
+                    .distributive_run_if(input_just_pressed(KeyCode::F3)),                                            
                 #[cfg(feature = "debug_draw")]
-                toggle_aabb.run_if(input_just_pressed(KeyCode::F4)),                
+                toggle_skeleton.run_if(input_just_pressed(KeyCode::F4)),                
                 #[cfg(feature = "debug_draw")]
-                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),                
-                #[cfg(feature = "debug_draw")]
-                toggle_joint_axes.run_if(input_just_pressed(KeyCode::F6)),
+                toggle_joint_axes.run_if(input_just_pressed(KeyCode::F5)),
             ),
         );
         
@@ -174,9 +177,10 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                             Without<ActionEvents>, // bevy_enhanced_input
                             //Without<GlobalRng>,    // rng
                             // seperate ui
+                            Without<UiTransform>,
+                            Without<PointerId>,
                             Without<Window>,
                             Without<Monitor>,
-                            Without<UiTransform>,
                         )>(world, ui, &mut selected_entities);
                     });
 
@@ -184,8 +188,9 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                     bevy_inspector_egui::bevy_inspector::hierarchy::hierarchy_ui_filtered::<(
                         // ui
                         Or<(
-                            With<Window>,
                             With<UiTransform>,
+                            With<PointerId>,
+                            With<Window>,                            
                             With<Monitor>,
                         )>,
                     )>(world, ui, &mut selected_entities);

@@ -3,6 +3,8 @@ use bevy::prelude::*;
 use bevy_inspector_egui::inspector_options::std_options::NumberDisplay;
 use bevy_inspector_egui::prelude::*;
 
+/// Main Human marker - only truly required components
+/// Eyes, Eyebrows, Eyelashes, Teeth, Tongue, Hair are all optional
 #[derive(Component, Default)]
 #[require(
     Phenotype,
@@ -12,59 +14,43 @@ use bevy_inspector_egui::prelude::*;
     Skin,
     Clothing,
     ClothingOffset,
-    FloorOffset
+    FloorOffset,
+    Morphs
 )]
 pub struct Human;
 
 #[derive(Component, Clone)]
 pub struct Skin {
-    /// Optional proxy mesh. If None, uses base mesh.
-    pub mesh: Option<SkinMesh>,
+    pub mesh: SkinMesh,
     pub material: SkinMaterial,
 }
 
 impl Default for Skin {
     fn default() -> Self {
         Self {
-            mesh: None,
+            mesh: SkinMesh::FemaleGeneric,
             material: SkinMaterial::YoungCaucasianFemale,
         }
     }
 }
 
 // === PARTS ===
+// Eyes, Eyebrows, Eyelashes, Teeth, Tongue, Hair are generated in build.rs with Component derive
+// They implement MHPart trait for generic handling
 
-#[derive(Component, Clone, Copy)]
-pub struct Eyes {
-    pub mesh: EyesMesh,
-    pub material: EyesMaterial,
-}
-
-// Hair is generated in build.rs with Component derive
-
-#[derive(Component, Clone, Copy)]
-pub struct Eyebrows(pub EyebrowsAsset);
-
-#[derive(Component, Clone, Copy)]
-pub struct Eyelashes(pub EyelashesAsset);
-
-#[derive(Component, Clone, Copy)]
-pub struct Teeth(pub TeethAsset);
-
-#[derive(Component, Clone, Copy)]
-pub struct Tongue(pub TongueAsset);
-
-#[derive(Component, Clone, Default)]
+// Clothing is the only multi-item part, needs wrapper
+#[derive(Component, Clone, Default, Reflect)]
 pub struct Clothing(pub Vec<ClothingAsset>);
 
-// === SETTINGS ===
-
-#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions)]
+/// Uses normals to offset clothing away from skin, hack to reduce z-fighting
+// TODO: replace with Delete Vertex Groups
+#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions, Deref, DerefMut)]
 #[reflect(Component, InspectorOptions)]
 pub struct ClothingOffset(
     #[inspector(min = 0.0, max = 0.01, speed = 0.0001, display = NumberDisplay::Slider)] pub f32,
 );
 
+/// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
 #[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions)]
 #[reflect(Component, InspectorOptions)]
 pub struct FloorOffset(
@@ -75,7 +61,7 @@ pub struct FloorOffset(
 pub struct Morphs(pub Vec<Morph>);
 
 // Marker components body parts
-#[derive(Component, Copy, Clone, strum::Display, PartialEq, Eq, Debug)]
+#[derive(Component, Copy, Clone, strum::Display, PartialEq, Eq, Debug, Reflect)]
 pub enum MHTag {
     Armature,
     Skin,
@@ -90,7 +76,7 @@ pub enum MHTag {
 }
 
 #[derive(Component, Default)]
-pub struct HumanPart;
+pub struct Armature;
 
 #[derive(Component)]
 #[require(MHTag::Skin)]

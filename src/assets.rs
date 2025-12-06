@@ -8,11 +8,11 @@ use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 // Finding all the assets related to MakeHuman would be magic string hell
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
+
 #[derive(Component)]
-pub struct CharacterAssets {
-    /// Proxy mesh obj+verts (None = use base mesh)
-    pub skin_obj_base: Option<Handle<ObjBaseMesh>>,
-    pub skin_proxy: Option<Handle<ProxyAsset>>,
+pub struct HumanAssets {
+    pub skin_obj_base: Handle<ObjBaseMesh>,
+    pub skin_proxy: Handle<ProxyAsset>,
     pub skin_material: Handle<StandardMaterial>,
     
     pub parts: Vec<MHItem>,
@@ -28,89 +28,51 @@ pub struct CharacterAssets {
 }
 
 /// Query params for building CharacterAssets from components
-pub struct CharacterComponents<'a> {
+/// All part components are optional except Rig, Skin, Clothing
+pub struct HumanComponents<'a> {
     pub rig: &'a Rig,
     pub skin: &'a Skin,
-    pub eyes: &'a Eyes,
-    pub eyebrows: &'a Eyebrows,
-    pub eyelashes: &'a Eyelashes,
-    pub teeth: &'a Teeth,
-    pub tongue: &'a Tongue,
+    pub eyes: Option<&'a Eyes>,
+    pub eyebrows: Option<&'a Eyebrows>,
+    pub eyelashes: Option<&'a Eyelashes>,
+    pub teeth: Option<&'a Teeth>,
+    pub tongue: Option<&'a Tongue>,
     pub hair: Option<&'a Hair>,
     pub clothing: &'a Clothing,
     pub morphs: &'a Morphs,
     pub phenotype: &'a Phenotype,
-    pub clothing_offset: f32,
+    pub clothing_offset: &'a ClothingOffset,
 }
 
-impl CharacterAssets {
+impl HumanAssets {
     /// Create from individual components
     pub fn from_components(
-        c: CharacterComponents,
+        c: HumanComponents,
         asset_server: &AssetServer,
     ) -> Self {
-        let mut parts = vec![
-            MHItem::load(
-                MHTag::Eyes,
-                c.eyes.mesh.mhclo_path().to_string(),
-                c.eyes.material.mhmat_path().to_string(),
-                c.eyes.mesh.obj_path().to_string(),
-                asset_server,
-            ),
-            MHItem::load(
-                MHTag::Teeth,
-                c.teeth.0.mhclo_path().to_string(),
-                c.teeth.0.mhmat_path().to_string(),
-                c.teeth.0.obj_path().to_string(),
-                asset_server,
-            ),
-            MHItem::load(
-                MHTag::Tongue,
-                c.tongue.0.mhclo_path().to_string(),
-                c.tongue.0.mhmat_path().to_string(),
-                c.tongue.0.obj_path().to_string(),
-                asset_server,
-            ),
-            MHItem::load(
-                MHTag::Eyebrows,
-                c.eyebrows.0.mhclo_path().to_string(),
-                c.eyebrows.0.mhmat_path().to_string(),
-                c.eyebrows.0.obj_path().to_string(),
-                asset_server,
-            ),
-            MHItem::load(
-                MHTag::Eyelashes,
-                c.eyelashes.0.mhclo_path().to_string(),
-                c.eyelashes.0.mhmat_path().to_string(),
-                c.eyelashes.0.obj_path().to_string(),
-                asset_server,
-            ),
-        ];
+        let mut parts = Vec::new();
 
-        if let Some(hair) = c.hair {
-            parts.push(MHItem::load(
-                MHTag::Hair,
-                hair.mhclo_path().to_string(),
-                hair.mhmat_path().to_string(),
-                hair.obj_path().to_string(),
-                asset_server,
-            ));
-        }
+        load_part(c.eyes, &mut parts, asset_server);
+        load_part(c.eyebrows, &mut parts, asset_server);
+        load_part(c.eyelashes, &mut parts, asset_server);
+        load_part(c.teeth, &mut parts, asset_server);
+        load_part(c.tongue, &mut parts, asset_server);
+        load_part(c.hair, &mut parts, asset_server);
 
         for clothing_item in c.clothing.0.iter() {
             parts.push(MHItem::load(
                 MHTag::Clothes,
-                clothing_item.mhclo_path().to_string(),
-                clothing_item.mhmat_path().to_string(),
-                clothing_item.obj_path().to_string(),
+                clothing_item.mhclo().to_string(),
+                clothing_item.mhmat().to_string(),
+                clothing_item.obj().to_string(),
                 asset_server,
             ));
         }
 
         Self {
-            skin_obj_base: c.skin.mesh.as_ref().map(|m| asset_server.load(m.obj_path().to_string())),
-            skin_proxy: c.skin.mesh.as_ref().map(|m| asset_server.load(m.proxy_path().to_string())),
-            skin_material: asset_server.load(c.skin.material.mhmat_path().to_string()),
+            skin_obj_base: asset_server.load(c.skin.mesh.obj().to_string()),
+            skin_proxy: asset_server.load(c.skin.mesh.proxy().to_string()),
+            skin_material: asset_server.load(c.skin.material.mhmat().to_string()),
 
             rig_bones: asset_server.load(c.rig.rig_json_path().to_string()),
             rig_weights: asset_server.load(c.rig.weights().to_string()),            
@@ -127,7 +89,7 @@ impl CharacterAssets {
                 .into_iter()
                 .map(|(path, weight)| (asset_server.load(path), weight))
                 .collect(),
-            clothing_offset: c.clothing_offset,
+            clothing_offset: c.clothing_offset.0,
             parts,
         }
     }
@@ -135,17 +97,12 @@ impl CharacterAssets {
     /// Get all handles for progress tracking
     pub fn all_handles(&self) -> Vec<UntypedHandle> {
         let mut handles = vec![
+            self.skin_obj_base.clone().untyped(),
+            self.skin_proxy.clone().untyped(),
             self.skin_material.clone().untyped(),
             self.rig_bones.clone().untyped(),
             self.rig_weights.clone().untyped(),
         ];
-
-        if let Some(ref h) = self.skin_obj_base {
-            handles.push(h.clone().untyped());
-        }
-        if let Some(ref h) = self.skin_proxy {
-            handles.push(h.clone().untyped());
-        }
 
         for part in &self.parts {
             handles.extend(part.handles());
@@ -160,6 +117,23 @@ impl CharacterAssets {
         }
 
         handles
+    }
+}
+
+// Helper to load optional MHPart components
+fn load_part<T: MHPart>(
+    part: Option<&T>,
+    parts: &mut Vec<MHItem>,
+    asset_server: &AssetServer,
+) {
+    if let Some(p) = part {
+        parts.push(MHItem::load(
+            T::tag(),
+            p.mhclo().to_string(),
+            p.mhmat().to_string(),
+            p.obj().to_string(),
+            asset_server,
+        ));
     }
 }
 

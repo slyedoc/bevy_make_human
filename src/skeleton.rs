@@ -2,7 +2,6 @@
 
 use bevy::{
     animation::{AnimationTarget, AnimationTargetId},
-    gltf::Gltf,
     math::Affine3A,
     platform::collections::HashMap,
     prelude::*,
@@ -17,78 +16,6 @@ pub struct GltfSkeletonData {
     pub armature_transform: Transform,
 }
 
-/// Extract skeleton data from a loaded GLTF skeleton
-///
-/// Returns global bone rotations and the Armature transform.
-/// The Armature transform handles coordinate system conversion (e.g., 90° X rotation for Mixamo).
-pub fn extract_gltf_skeleton_data(
-    gltf: &Gltf,
-    gltf_nodes: &Assets<bevy::gltf::GltfNode>,
-) -> GltfSkeletonData {
-    // Build parent map, local rotations, and find Armature transform
-    let mut parent_map: HashMap<String, String> = HashMap::default();
-    let mut local_rotations: HashMap<String, Quat> = HashMap::default();
-    let mut armature_transform = Transform::IDENTITY;
-
-    for node_handle in &gltf.nodes {
-        if let Some(node) = gltf_nodes.get(node_handle) {
-            local_rotations.insert(node.name.clone(), node.transform.rotation);
-
-            // Capture Armature transform (rotation only - ignore scale from Mixamo cm->m conversion)
-            if node.name == "Armature" {
-                armature_transform = Transform {
-                    translation: node.transform.translation,
-                    rotation: node.transform.rotation,
-                    scale: Vec3::ONE, // Ignore GLB scale
-                };
-            }
-
-            for child_handle in &node.children {
-                if let Some(child) = gltf_nodes.get(child_handle) {
-                    parent_map.insert(child.name.clone(), node.name.clone());
-                }
-            }
-        }
-    }
-
-    // Compute global rotations for each bone
-    let mut global_rotations = HashMap::default();
-    for (name, _) in &local_rotations {
-        let mut rotation_chain = Vec::new();
-        let mut current = name.clone();
-
-        // Walk up to root collecting rotations
-        while let Some(rot) = local_rotations.get(&current) {
-            rotation_chain.push(*rot);
-            if let Some(parent) = parent_map.get(&current) {
-                current = parent.clone();
-            } else {
-                break;
-            }
-        }
-
-        // Multiply from root to leaf (reverse order)
-        let mut global_rot = Quat::IDENTITY;
-        for rot in rotation_chain.iter().rev() {
-            global_rot = global_rot * *rot;
-        }
-
-        global_rotations.insert(name.clone(), global_rot);
-    }
-
-    GltfSkeletonData {
-        rotations: global_rotations,
-        armature_transform,
-    }
-}
-
-/// Extract global bone rotations from a loaded GLTF skeleton (legacy wrapper)
-pub fn extract_gltf_skeleton_rotations(
-    gltf: &Gltf,
-    gltf_nodes: &Assets<bevy::gltf::GltfNode>,
-) -> HashMap<String, Quat> {
-    extract_gltf_skeleton_data(gltf, gltf_nodes).rotations
-}
 
 /// Spawn skeleton bone entities with proper hierarchy and AnimationTarget components
 pub fn spawn_skeleton_bones(

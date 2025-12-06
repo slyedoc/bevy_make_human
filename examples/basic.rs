@@ -5,7 +5,7 @@ pub use common::*;
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use bevy_make_human::prelude::*;
-use bevy_inspector_egui::quick::StateInspectorPlugin;
+
 fn main() -> AppExit {
     App::new()
         .add_plugins((
@@ -19,7 +19,7 @@ fn main() -> AppExit {
             PhysicsPlugins::default(),
             MakeHumanPlugin::default(),
             CommonPlugin, // camera and egui editor
-            StateInspectorPlugin::<MHState>::default(),
+
         ))
         .add_systems(Startup, setup)
         .run()
@@ -61,23 +61,19 @@ fn setup(
         Human,
         Rig::Mixamo,
         Skin {
-            mesh: Some(SkinMesh::MaleGeneric),
+            mesh: SkinMesh::MaleGeneric,
             material: SkinMaterial::YoungCaucasianMale,
         },
-        Eyes {
-            mesh: EyesMesh::LowPoly,
-            material: EyesMaterial::Bluegreen,
-        },
-        Hair::Bob02,
-        Eyebrows(EyebrowsAsset::Eyebrow006),
-        Eyelashes(EyelashesAsset::Eyelashes01),
-        Teeth(TeethAsset::TeethBase),
-        Tongue(TongueAsset::Tongue01),
-        Clothing(vec![
-            ClothingAsset::ToigoMaleSuit3,
-            ClothingAsset::ToigoAnkleBootsMale,
-        ]),
-        Morphs::default(),
+        Eyes::LowPolyBluegreen,
+        //Hair::Bob02,
+        Eyebrows::Eyebrow006,
+        Eyelashes::Eyelashes01,
+        Teeth::TeethBase,
+        Tongue::Tongue01,
+        // Clothing(vec![
+        //     ClothingAsset::ToigoMaleSuit3,
+        //     ClothingAsset::ToigoAnkleBootsMale,
+        // ]),
         Phenotype {
             gender: 1.0,
             age: 0.5,

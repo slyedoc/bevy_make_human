@@ -4,8 +4,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
-// BEWLOW are all the same 
-const COMMON_ITEMS: [&str; 4] = ["mhclo", "mhmat", "obj",  "thumb"];
+// Common required files for parts with mhclo
+const COMMON_ITEMS: [&str; 4] = ["mhclo", "mhmat", "obj", "thumb"];
+
+// Parts that derive Component directly (used as components without wrappers)
+const COMPONENT_ENUMS: &[&str] = &["Hair", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Eyes"];
 
 fn main() -> io::Result<()> {
     
@@ -53,33 +56,29 @@ fn main() -> io::Result<()> {
         textures: &["diffuse", "normal", "specular", "ao", "bump"],
     })?;
 
-    // Eyes
-    generate_flat_file_enum(&mut f, &assets_dir, "eyes/materials", "EyesMaterial", "mhmat")?;
-    generate_asset_enum(&mut f, &assets_dir, "eyes", "EyesMesh", &AssetFilePattern {
-        required: &["mhclo", "obj", "thumb"],
-        textures: &[],
-    })?;    
-  
-    // Eyebrows/Eyelashes: .mhclo, .obj, .mhmat, .thumb
-    generate_asset_enum(&mut f, &assets_dir, "eyebrows", "EyebrowsAsset", &AssetFilePattern {
+    // Eyes - cross-product of mesh × material
+    generate_eyes_enum(&mut f, &assets_dir)?;
+
+    // Eyebrows - Component enum
+    generate_asset_enum(&mut f, &assets_dir, "eyebrows", "Eyebrows", &AssetFilePattern {
         required: &COMMON_ITEMS,
         textures: &[],
     })?;
 
-    // Eyelashes
-    generate_asset_enum(&mut f, &assets_dir, "eyelashes", "EyelashesAsset", &AssetFilePattern {
+    // Eyelashes - Component enum
+    generate_asset_enum(&mut f, &assets_dir, "eyelashes", "Eyelashes", &AssetFilePattern {
         required: &COMMON_ITEMS,
         textures: &[],
     })?;
 
-    // Teeth
-    generate_asset_enum(&mut f, &assets_dir, "teeth", "TeethAsset", &AssetFilePattern {
+    // Teeth - Component enum
+    generate_asset_enum(&mut f, &assets_dir, "teeth", "Teeth", &AssetFilePattern {
         required: &COMMON_ITEMS,
         textures: &[],
     })?;
 
-    // Tongue
-    generate_asset_enum(&mut f, &assets_dir, "tongue", "TongueAsset", &AssetFilePattern {
+    // Tongue - Component enum
+    generate_asset_enum(&mut f, &assets_dir, "tongue", "Tongue", &AssetFilePattern {
         required: &COMMON_ITEMS,
         textures: &[],
     })?;
@@ -95,6 +94,9 @@ fn main() -> io::Result<()> {
 
     // Phenotype - macrodetails for race/gender/age/muscle/weight etc
     generate_phenotype(&mut f, &assets_dir)?;
+
+    // MHPart trait for generic part handling
+    generate_mhpart_trait(&mut f)?;
 
     Ok(())
 }
@@ -144,8 +146,9 @@ fn generate_asset_enum(
     });
 
     // Write enum with strum derives including EnumProperty
-    // Add Component derive for types used directly as components (Hair)
-    let component_derive = if enum_name == "Hair" { "Component, " } else { "" };
+    // Add Component derive for types used directly as components
+    let is_component = COMPONENT_ENUMS.contains(&enum_name);
+    let component_derive = if is_component { "Component, " } else { "" };
     writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
     writeln!(f, "#[derive({}Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]", component_derive)?;
     writeln!(f, "pub enum {} {{", enum_name)?;
@@ -247,7 +250,7 @@ fn generate_asset_enum(
         let clean_name = file_type.replace(".", "_",);
 
         writeln!(f, "    /// Get .{} path", file_type)?;
-        writeln!(f, "    pub fn {}_path(&self) -> &str {{", clean_name)?;
+        writeln!(f, "    pub fn {}(&self) -> &str {{", clean_name)?;
         writeln!(f, "        self.get_str(\"{}\").unwrap()", clean_name)?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
@@ -269,58 +272,97 @@ fn generate_asset_enum(
     Ok(())
 }
 
-fn generate_flat_file_enum(
-    f: &mut File,
-    assets_dir: &Path,
-    subdir: &str,
-    enum_name: &str,
-    extension: &str,
-) -> io::Result<()> {
-    let dir_path = assets_dir.join(subdir);
+// generate_flat_file_enum removed - Eyes now uses generate_eyes_enum for cross-product
 
-    if !dir_path.exists() {
-        println!("cargo:warning=Skipping {}, directory not found", subdir);
+/// Generate Eyes enum as cross-product of mesh variants × material variants
+fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
+    let eyes_dir = assets_dir.join("eyes");
+    let materials_dir = eyes_dir.join("materials");
+
+    if !eyes_dir.exists() || !materials_dir.exists() {
+        println!("cargo:warning=Skipping eyes, directory not found");
         return Ok(());
     }
 
-    // Collect all files with extension
-    let mut entries: Vec<_> = fs::read_dir(&dir_path)?
-        .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.path().is_file() &&
-            e.path().extension().and_then(|s| s.to_str()) == Some(extension)
-        })
-        .collect();
-
-    entries.sort_by(|a, b| {
-        a.path().file_stem().cmp(&b.path().file_stem())
-    });
-
-    // Write enum
-    writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
-    writeln!(f, "pub enum {} {{", enum_name)?;
-
-    for entry in &entries {
+    // Collect mesh variants (subdirs with mhclo)
+    let mut meshes: Vec<(String, String)> = Vec::new(); // (variant_name, dir_name)
+    for entry in fs::read_dir(&eyes_dir)? {
+        let entry = entry?;
         let path = entry.path();
-        let file_stem = path.file_stem().unwrap().to_string_lossy().to_string();
-        let file_name = entry.file_name().to_string_lossy().to_string();
-        let variant_name = sanitize_name(&file_stem);
-        let full_path = format!("make_human/{}/{}", subdir, file_name);
+        if !path.is_dir() {
+            continue;
+        }
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+        if dir_name == "materials" {
+            continue;
+        }
+        // Check for mhclo file
+        let mhclo_path = path.join(format!("{}.mhclo", dir_name));
+        if mhclo_path.exists() {
+            meshes.push((sanitize_name(&dir_name), dir_name));
+        }
+    }
+    meshes.sort_by(|a, b| a.0.cmp(&b.0));
 
-        writeln!(f, "    /// {}", file_stem)?;
-        writeln!(f, "    #[strum(props(mhmat = \"{}\"))]", full_path)?;
-        writeln!(f, "    {},", variant_name)?;
+    // Collect material variants
+    let mut materials: Vec<(String, String)> = Vec::new(); // (variant_name, file_stem)
+    for entry in fs::read_dir(&materials_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("mhmat") {
+            continue;
+        }
+        let file_stem = path.file_stem().unwrap().to_string_lossy().to_string();
+        materials.push((sanitize_name(&file_stem), file_stem));
+    }
+    materials.sort_by(|a, b| a.0.cmp(&b.0));
+
+    // Generate cross-product enum
+    writeln!(f, "/// Generated from assets/make_human/eyes (mesh × material cross-product)")?;
+    writeln!(f, "#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(f, "pub enum Eyes {{")?;
+
+    for (mesh_variant, mesh_dir) in &meshes {
+        for (mat_variant, mat_stem) in &materials {
+            let variant_name = format!("{}{}", mesh_variant, mat_variant);
+            let mhclo_path = format!("make_human/eyes/{}/{}.mhclo", mesh_dir, mesh_dir);
+            let obj_path = format!("make_human/eyes/{}/{}.obj", mesh_dir, mesh_dir);
+            let mhmat_path = format!("make_human/eyes/materials/{}.mhmat", mat_stem);
+            let thumb_path = format!("make_human/eyes/{}/{}.thumb", mesh_dir, mesh_dir);
+
+            writeln!(f, "    /// {} mesh with {} material", mesh_dir, mat_stem)?;
+            writeln!(
+                f,
+                "    #[strum(props(mhclo = \"{}\", obj = \"{}\", mhmat = \"{}\", thumb = \"{}\"))]",
+                mhclo_path, obj_path, mhmat_path, thumb_path
+            )?;
+            writeln!(f, "    {},", variant_name)?;
+        }
     }
 
     writeln!(f, "}}")?;
     writeln!(f)?;
 
     // Generate helper methods
-    writeln!(f, "impl {} {{", enum_name)?;
+    writeln!(f, "impl Eyes {{")?;
+    writeln!(f, "    /// Get .mhclo path")?;
+    writeln!(f, "    pub fn mhclo(&self) -> &str {{")?;
+    writeln!(f, "        self.get_str(\"mhclo\").unwrap()")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
+    writeln!(f, "    /// Get .obj path")?;
+    writeln!(f, "    pub fn obj(&self) -> &str {{")?;
+    writeln!(f, "        self.get_str(\"obj\").unwrap()")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
     writeln!(f, "    /// Get .mhmat path")?;
-    writeln!(f, "    pub fn mhmat_path(&self) -> &str {{")?;
+    writeln!(f, "    pub fn mhmat(&self) -> &str {{")?;
     writeln!(f, "        self.get_str(\"mhmat\").unwrap()")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
+    writeln!(f, "    /// Get .thumb path")?;
+    writeln!(f, "    pub fn thumb(&self) -> &str {{")?;
+    writeln!(f, "        self.get_str(\"thumb\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
     writeln!(f, "}}")?;
@@ -389,10 +431,10 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
 /// Generate Rig enum - requires rig.json and mhw
 fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
-    let dir_path = assets_dir.join("rigs/standard");
+    let dir_path = assets_dir.join("rigs");
 
     if !dir_path.exists() {
-        println!("cargo:warning=Skipping rigs/standard, directory not found");
+        println!("cargo:warning=Skipping rigs, directory not found");
         return Ok(());
     }
 
@@ -429,8 +471,8 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         }
         let mut props = Vec::new();
 
-        props.push(format!("rig_json = \"make_human/rigs/standard/{}/{}.rig.json\"", dir_name_str, dir_name_str));
-        props.push(format!("weights = \"make_human/rigs/standard/{}/{}.mhw\"", dir_name_str, dir_name_str));
+        props.push(format!("rig_json = \"make_human/rigs/{}/{}.rig.json\"", dir_name_str, dir_name_str));
+        props.push(format!("weights = \"make_human/rigs/{}/{}.mhw\"", dir_name_str, dir_name_str));
 
         writeln!(f, "    /// {}", dir_name_str)?;
         writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
@@ -1300,6 +1342,44 @@ fn generate_phenotype(f: &mut File, _assets_dir: &Path) -> io::Result<()> {
 
     writeln!(f, "}}")?;
     writeln!(f)?;
+
+    Ok(())
+}
+
+/// Generate MHPart trait and implementations for all part enums
+fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
+    // Trait definition
+    writeln!(f, "use crate::components::MHTag;")?;
+    writeln!(f)?;
+    writeln!(f, "/// Trait for MakeHuman part assets (Eyes, Eyebrows, etc.)")?;
+    writeln!(f, "/// All parts have mhclo, mhmat, and obj paths")?;
+    writeln!(f, "pub trait MHPart: Component + Copy + 'static {{")?;
+    writeln!(f, "    fn mhclo(&self) -> &str;")?;
+    writeln!(f, "    fn mhmat(&self) -> &str;")?;
+    writeln!(f, "    fn obj(&self) -> &str;")?;
+    writeln!(f, "    fn tag() -> MHTag;")?;
+    writeln!(f, "}}")?;
+    writeln!(f)?;
+
+    // Implementations for each part type
+    let parts = [
+        ("Eyes", "MHTag::Eyes"),
+        ("Eyebrows", "MHTag::Eyebrows"),
+        ("Eyelashes", "MHTag::Eyelashes"),
+        ("Teeth", "MHTag::Teeth"),
+        ("Tongue", "MHTag::Tongue"),
+        ("Hair", "MHTag::Hair"),
+    ];
+
+    for (enum_name, tag) in parts {
+        writeln!(f, "impl MHPart for {} {{", enum_name)?;
+        writeln!(f, "    fn mhclo(&self) -> &str {{ self.get_str(\"mhclo\").unwrap() }}")?;
+        writeln!(f, "    fn mhmat(&self) -> &str {{ self.get_str(\"mhmat\").unwrap() }}")?;
+        writeln!(f, "    fn obj(&self) -> &str {{ self.get_str(\"obj\").unwrap() }}")?;
+        writeln!(f, "    fn tag() -> MHTag {{ {} }}", tag)?;
+        writeln!(f, "}}")?;
+        writeln!(f)?;
+    }
 
     Ok(())
 }

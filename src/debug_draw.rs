@@ -167,7 +167,6 @@ fn manage_joint_labels(
     labeled_joints: Query<Entity, (With<AnimationTarget>, With<HasJointLabel>)>,
     labels: Query<Entity, With<JointNameLabel>>,
     mut label_transforms: Query<&mut Transform, With<JointNameLabel>>,
-    asset_server: Res<AssetServer>,
     mut logged: Local<bool>,
 ) {
     // Debug log arm GlobalTransform positions
@@ -185,8 +184,8 @@ fn manage_joint_labels(
     let (gizmo_config, config) = store.config::<JointAxesGizmos>();
 
     if gizmo_config.enabled {
-        // Spawn labels for any joints that don't have them yet
-        let font: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
+        // Spawn labels for any joints that don't have them yet (uses default font)
+        let font: Handle<Font> = Handle::default();
 
         for (entity, name, _) in &unlabeled_joints {
             let label = name

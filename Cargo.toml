@@ -5,8 +5,8 @@ edition = "2024"
 
 [features]
 default = []
-ui = ["bevy/experimental_bevy_feathers"]
-debug_draw = ["bevy_mod_billboard"]
+feathers = ["bevy/experimental_bevy_feathers"]
+debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
 [dependencies]
@@ -40,8 +40,8 @@ name = "basic"
 required-features = []
 
 [[example]]
-name = "egui"
-required-features = [""]
+name = "feathers"
+required-features = ["feathers", "debug_draw"]
 
 [dev-dependencies]
 bevy = { version = "0.17", features = [
