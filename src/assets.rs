@@ -4,11 +4,20 @@ use bevy_inspector_egui::{inspector_options::std_options::NumberDisplay, prelude
 #[allow(unused_imports)]
 use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 
+/// Trait for MakeHuman part assets with mhclo/mhmat/obj/thumb
+pub trait MHPart: Copy + 'static {
+    fn mhclo(&self) -> &str;
+    fn mhmat(&self) -> &str;
+    fn obj(&self) -> &str;
+    fn thumb(&self) -> &str;
+}
+
+
 // See build.rs for more details
 // Finding all the assets related to MakeHuman would be magic string hell
 include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
-
+/// Converts Enums to Handles
 #[derive(Component)]
 pub struct HumanAssets {
     pub skin_obj_base: Handle<ObjBaseMesh>,
@@ -27,73 +36,7 @@ pub struct HumanAssets {
     pub clothing_offset: f32,
 }
 
-/// Query params for building CharacterAssets from components
-/// All part components are optional except Rig, Skin, Clothing
-pub struct HumanComponents<'a> {
-    pub rig: &'a Rig,
-    pub skin: &'a Skin,
-    pub eyes: Option<&'a Eyes>,
-    pub eyebrows: Option<&'a Eyebrows>,
-    pub eyelashes: Option<&'a Eyelashes>,
-    pub teeth: Option<&'a Teeth>,
-    pub tongue: Option<&'a Tongue>,
-    pub hair: Option<&'a Hair>,
-    pub clothing: &'a Clothing,
-    pub morphs: &'a Morphs,
-    pub phenotype: &'a Phenotype,
-    pub clothing_offset: &'a ClothingOffset,
-}
-
 impl HumanAssets {
-    /// Create from individual components
-    pub fn from_components(
-        c: HumanComponents,
-        asset_server: &AssetServer,
-    ) -> Self {
-        let mut parts = Vec::new();
-
-        load_part(c.eyes, &mut parts, asset_server);
-        load_part(c.eyebrows, &mut parts, asset_server);
-        load_part(c.eyelashes, &mut parts, asset_server);
-        load_part(c.teeth, &mut parts, asset_server);
-        load_part(c.tongue, &mut parts, asset_server);
-        load_part(c.hair, &mut parts, asset_server);
-
-        for clothing_item in c.clothing.0.iter() {
-            parts.push(MHItem::load(
-                MHTag::Clothes,
-                clothing_item.mhclo().to_string(),
-                clothing_item.mhmat().to_string(),
-                clothing_item.obj().to_string(),
-                asset_server,
-            ));
-        }
-
-        Self {
-            skin_obj_base: asset_server.load(c.skin.mesh.obj().to_string()),
-            skin_proxy: asset_server.load(c.skin.mesh.proxy().to_string()),
-            skin_material: asset_server.load(c.skin.material.mhmat().to_string()),
-
-            rig_bones: asset_server.load(c.rig.rig_json_path().to_string()),
-            rig_weights: asset_server.load(c.rig.weights().to_string()),            
-            morphs: c.morphs.0
-                .iter()
-                .filter_map(|Morph { target, value }| {
-                    target
-                        .target_path(*value)
-                        .map(|path| (asset_server.load(path.to_string()), *value))
-                })
-                .collect(),
-            phenotype_morphs: c.phenotype
-                .all_targets()
-                .into_iter()
-                .map(|(path, weight)| (asset_server.load(path), weight))
-                .collect(),
-            clothing_offset: c.clothing_offset.0,
-            parts,
-        }
-    }
-
     /// Get all handles for progress tracking
     pub fn all_handles(&self) -> Vec<UntypedHandle> {
         let mut handles = vec![
@@ -120,26 +63,6 @@ impl HumanAssets {
     }
 }
 
-// Helper to load optional MHPart components
-fn load_part<T: MHPart>(
-    part: Option<&T>,
-    parts: &mut Vec<MHItem>,
-    asset_server: &AssetServer,
-) {
-    if let Some(p) = part {
-        parts.push(MHItem::load(
-            T::tag(),
-            p.mhclo().to_string(),
-            p.mhmat().to_string(),
-            p.obj().to_string(),
-            asset_server,
-        ));
-    }
-}
-
-
-
-
 pub struct MHItem {
     pub tag: MHTag,
     pub clo: Handle<MhcloAsset>,
@@ -149,18 +72,13 @@ pub struct MHItem {
 
 impl MHItem {
     /// Load assets (clo, mat, obj with verts)
-    pub fn load(
-        tag: MHTag,
-        clo_path: String,
-        mat_path: String,
-        obj_path: String,
-        asset_server: &AssetServer,
+    pub fn load<T: MHPart>(tag: MHTag, part: &T, asset_server: &AssetServer,
     ) -> Self {
         Self {
             tag,
-            clo: asset_server.load(clo_path),
-            mat: asset_server.load(mat_path),
-            obj_base: asset_server.load(obj_path),
+            clo: asset_server.load(part.mhclo().to_string()),
+            mat: asset_server.load(part.mhmat().to_string()),
+            obj_base: asset_server.load(part.obj().to_string()),
         }
     }
 
@@ -186,7 +104,6 @@ pub struct MHItemResult {
     pub mat: Handle<StandardMaterial>, // dont do anything currently with material, but we need pass it along
     pub mesh: Mesh,    
 }
-
 
 pub struct MHItemFinal {
     pub tag: MHTag,

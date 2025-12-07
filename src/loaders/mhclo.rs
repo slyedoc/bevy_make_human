@@ -324,15 +324,10 @@ impl MhcloAsset {
             );
 
             // Push outward along triangle normal to prevent skin poke-through
-            // Note: cross order swapped because Z is negated (coordinate flip)
-            let normal_push = if normal_offset > 0.0 {
-                let edge1 = v1 - v0;
-                let edge2 = v2 - v0;
-                edge2.cross(edge1).normalize_or_zero() * normal_offset
-            } else {
-                Vec3::ZERO
-            };
-
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+            let normal_push = edge1.cross(edge2).normalize_or_zero() * normal_offset;
+            
             asset_vertices[i] = pos + scaled_offset + normal_push;
         }
     }

@@ -53,12 +53,14 @@ fn main() -> io::Result<()> {
         textures: &["diffuse", "normal", "specular", "ao", "bump"],
     })?;
 
-    // Clothing: .mhclo, .mhmat required; .obj extracted from mhclo parsing; textures optional
+    // Clothing
     generate_asset_enum(&mut f, &assets_dir, "clothes", "ClothingAsset", &AssetFilePattern {
         required: &["mhclo", "mhmat", "obj", "thumb"],
         textures: &["diffuse", "normal", "specular", "ao", "bump"],
     })?;
 
+    // TODO: testing different way, its the only specify asset here that
+    // supports different meshes
     // Eyes - cross-product of mesh × material
     generate_eyes_enum(&mut f, &assets_dir)?;
 
@@ -153,9 +155,10 @@ fn generate_asset_enum(
     let is_component = COMPONENT_ENUMS.contains(&enum_name);
     let component_derive = if is_component { "Component, " } else { "" };
     writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
-    writeln!(f, "#[derive({}Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]", component_derive)?;
+    writeln!(f, "#[derive({}Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]", component_derive)?;
     writeln!(f, "pub enum {} {{", enum_name)?;
 
+    let mut first = true;
     for entry in &entries {
         let dir_name = entry.file_name();
         let dir_name_str = dir_name.to_string_lossy();
@@ -238,6 +241,10 @@ fn generate_asset_enum(
         };
 
         writeln!(f, "    /// {}{}", dir_name_str, doc_suffix)?;
+        if first {
+            writeln!(f, "    #[default]")?;
+            first = false;
+        }
         writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
         writeln!(f, "    {},", variant_name)?;
     }
@@ -245,32 +252,45 @@ fn generate_asset_enum(
     writeln!(f, "}}")?;
     writeln!(f)?;
 
+    // Enums that implement MHPart trait - skip generating accessors covered by trait
+    const MHPART_ENUMS: &[&str] = &["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
+    const MHPART_METHODS: &[&str] = &["mhclo", "mhmat", "obj", "thumb"];
+    let is_mhpart = MHPART_ENUMS.contains(&enum_name);
+
     // Generate helper methods using EnumProperty
-    writeln!(f, "impl {} {{", enum_name)?;
+    // Skip methods covered by MHPart trait
+    let has_non_trait_methods = pattern.required.iter().any(|f| !is_mhpart || !MHPART_METHODS.contains(f))
+        || !pattern.textures.is_empty();
 
-    // Required file accessors
-    for file_type in pattern.required {
-        let clean_name = file_type.replace(".", "_",);
+    if has_non_trait_methods {
+        writeln!(f, "impl {} {{", enum_name)?;
 
-        writeln!(f, "    /// Get .{} path", file_type)?;
-        writeln!(f, "    pub fn {}(&self) -> &str {{", clean_name)?;
-        writeln!(f, "        self.get_str(\"{}\").unwrap()", clean_name)?;
-        writeln!(f, "    }}")?;
+        // Required file accessors (skip if covered by MHPart)
+        for file_type in pattern.required {
+            let clean_name = file_type.replace(".", "_");
+            if is_mhpart && MHPART_METHODS.contains(&clean_name.as_str()) {
+                continue;
+            }
+            writeln!(f, "    /// Get .{} path", file_type)?;
+            writeln!(f, "    pub fn {}(&self) -> &str {{", clean_name)?;
+            writeln!(f, "        self.get_str(\"{}\").unwrap()", clean_name)?;
+            writeln!(f, "    }}")?;
+            writeln!(f)?;
+        }
+
+        // Texture accessors
+        for texture_type in pattern.textures {
+            writeln!(f, "    /// Get {} texture path if available", texture_type)?;
+            writeln!(f, "    pub fn {}_texture(&self) -> Option<&str> {{", texture_type)?;
+            writeln!(f, "        use strum::EnumProperty;")?;
+            writeln!(f, "        self.get_str(\"{}\")", texture_type)?;
+            writeln!(f, "    }}")?;
+            writeln!(f)?;
+        }
+
+        writeln!(f, "}}")?;
         writeln!(f)?;
     }
-
-    // Texture accessors
-    for texture_type in pattern.textures {
-        writeln!(f, "    /// Get {} texture path if available", texture_type)?;
-        writeln!(f, "    pub fn {}_texture(&self) -> Option<&str> {{", texture_type)?;
-        writeln!(f, "        use strum::EnumProperty;")?;
-        writeln!(f, "        self.get_str(\"{}\")", texture_type)?;
-        writeln!(f, "    }}")?;
-        writeln!(f)?;
-    }
-
-    writeln!(f, "}}")?;
-    writeln!(f)?;
 
     Ok(())
 }
@@ -322,9 +342,10 @@ fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     // Generate cross-product enum
     writeln!(f, "/// Generated from assets/make_human/eyes (mesh × material cross-product)")?;
-    writeln!(f, "#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(f, "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
     writeln!(f, "pub enum Eyes {{")?;
 
+    let mut first = true;
     for (mesh_variant, mesh_dir) in &meshes {
         for (mat_variant, mat_stem) in &materials {
             let variant_name = format!("{}{}", mesh_variant, mat_variant);
@@ -334,6 +355,10 @@ fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
             let thumb_path = format!("make_human/eyes/{}/{}.thumb", mesh_dir, mesh_dir);
 
             writeln!(f, "    /// {} mesh with {} material", mesh_dir, mat_stem)?;
+            if first {
+                writeln!(f, "    #[default]")?;
+                first = false;
+            }
             writeln!(
                 f,
                 "    #[strum(props(mhclo = \"{}\", obj = \"{}\", mhmat = \"{}\", thumb = \"{}\"))]",
@@ -346,30 +371,7 @@ fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "}}")?;
     writeln!(f)?;
 
-    // Generate helper methods
-    writeln!(f, "impl Eyes {{")?;
-    writeln!(f, "    /// Get .mhclo path")?;
-    writeln!(f, "    pub fn mhclo(&self) -> &str {{")?;
-    writeln!(f, "        self.get_str(\"mhclo\").unwrap()")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-    writeln!(f, "    /// Get .obj path")?;
-    writeln!(f, "    pub fn obj(&self) -> &str {{")?;
-    writeln!(f, "        self.get_str(\"obj\").unwrap()")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-    writeln!(f, "    /// Get .mhmat path")?;
-    writeln!(f, "    pub fn mhmat(&self) -> &str {{")?;
-    writeln!(f, "        self.get_str(\"mhmat\").unwrap()")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-    writeln!(f, "    /// Get .thumb path")?;
-    writeln!(f, "    pub fn thumb(&self) -> &str {{")?;
-    writeln!(f, "        self.get_str(\"thumb\").unwrap()")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
+    // Eyes implements MHPart trait, no need for duplicate methods
 
     Ok(())
 }
@@ -401,9 +403,10 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
     writeln!(f, "/// Generated from assets/make_human/poses")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(f, "#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
     writeln!(f, "pub enum PoseAsset {{")?;
 
+    let mut first = true;
     for entry in &entries {
         let dir_name = entry.file_name();
         let dir_name_str = dir_name.to_string_lossy();
@@ -412,6 +415,10 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let thumb_path = format!("make_human/poses/{}/{}.thumb", dir_name_str, dir_name_str);
 
         writeln!(f, "    /// {}", dir_name_str)?;
+        if first {
+            writeln!(f, "    #[default]")?;
+            first = false;
+        }
         writeln!(f, "    #[strum(props(bvh = \"{}\", thumb = \"{}\"))]", bvh_path, thumb_path)?;
         writeln!(f, "    {},", variant_name)?;
     }
@@ -1349,37 +1356,16 @@ fn generate_phenotype(f: &mut File, _assets_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Generate MHPart trait and implementations for all part enums
+/// Generate MHPart impl blocks for part enums (trait defined in assets.rs)
 fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
-    // Trait definition
-    writeln!(f, "use crate::components::MHTag;")?;
-    writeln!(f)?;
-    writeln!(f, "/// Trait for MakeHuman part assets (Eyes, Eyebrows, etc.)")?;
-    writeln!(f, "/// All parts have mhclo, mhmat, and obj paths")?;
-    writeln!(f, "pub trait MHPart: Component + Copy + 'static {{")?;
-    writeln!(f, "    fn mhclo(&self) -> &str;")?;
-    writeln!(f, "    fn mhmat(&self) -> &str;")?;
-    writeln!(f, "    fn obj(&self) -> &str;")?;
-    writeln!(f, "    fn tag() -> MHTag;")?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
+    let parts = ["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
 
-    // Implementations for each part type
-    let parts = [
-        ("Eyes", "MHTag::Eyes"),
-        ("Eyebrows", "MHTag::Eyebrows"),
-        ("Eyelashes", "MHTag::Eyelashes"),
-        ("Teeth", "MHTag::Teeth"),
-        ("Tongue", "MHTag::Tongue"),
-        ("Hair", "MHTag::Hair"),
-    ];
-
-    for (enum_name, tag) in parts {
+    for enum_name in parts {
         writeln!(f, "impl MHPart for {} {{", enum_name)?;
         writeln!(f, "    fn mhclo(&self) -> &str {{ self.get_str(\"mhclo\").unwrap() }}")?;
         writeln!(f, "    fn mhmat(&self) -> &str {{ self.get_str(\"mhmat\").unwrap() }}")?;
         writeln!(f, "    fn obj(&self) -> &str {{ self.get_str(\"obj\").unwrap() }}")?;
-        writeln!(f, "    fn tag() -> MHTag {{ {} }}", tag)?;
+        writeln!(f, "    fn thumb(&self) -> &str {{ self.get_str(\"thumb\").unwrap() }}")?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }

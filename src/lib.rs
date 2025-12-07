@@ -20,6 +20,7 @@ pub mod prelude {
 
 use avian3d::prelude::*;
 use bevy::{
+    animation::{AnimationTarget, AnimationTargetId},
     mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task, futures_lite::future},
@@ -114,8 +115,6 @@ impl Plugin for MakeHumanPlugin {
             .register_type::<Skin>()
             .register_type::<Morph>();
     }
-    
-
 }
 
 #[derive(AssetCollection, Resource)]
@@ -236,39 +235,40 @@ struct CharacterProcessingOutput {
     min_y: f32,
 }
 
-type CharacterQuery = (
-    Entity,
-    &'static Rig,
-    &'static Skin,
-    Option<&'static Eyes>,
-    Option<&'static Eyebrows>,
-    Option<&'static Eyelashes>,
-    Option<&'static Teeth>,
-    Option<&'static Tongue>,
-    Option<&'static Hair>,
-    &'static Clothing,
-    &'static Morphs,
-    &'static Phenotype,
-    &'static ClothingOffset,
-);
-
-type CharacterChangedFilter = Or<(
-    Changed<Rig>,
-    Changed<Skin>,
-    Changed<Eyes>,
-    Changed<Eyebrows>,
-    Changed<Eyelashes>,
-    Changed<Teeth>,
-    Changed<Tongue>,
-    Changed<Hair>,
-    Changed<Clothing>,
-    Changed<Morphs>,
-    Changed<Phenotype>,
-)>;
-
 fn character_changed(
     mut commands: Commands,
-    query: Query<CharacterQuery, CharacterChangedFilter>,
+    query: Query<
+        (
+            Entity,
+            &Rig,
+            &Skin,
+            &Eyes,
+            &Eyebrows,
+            &Eyelashes,
+            &Teeth,
+            &Tongue,
+            &Hair,
+            &Clothing,
+            &Morphs,
+            &Phenotype,
+            &ClothingOffset,
+        ),
+        Or<(
+            Changed<Rig>,
+            Changed<Skin>,
+            Changed<Eyes>,
+            Changed<Eyebrows>,
+            Changed<Eyelashes>,
+            Changed<Teeth>,
+            Changed<Tongue>,
+            Changed<Hair>,
+            Changed<Clothing>,
+            Changed<ClothingOffset>,
+            Changed<Morphs>,
+            Changed<Phenotype>,
+            Changed<FloorOffset>,
+        )>,
+    >,
     asset_server: Res<AssetServer>,
 ) {
     for (
@@ -287,67 +287,51 @@ fn character_changed(
         clothing_offset,
     ) in query.iter()
     {
+        let mut parts = vec![];
+        parts.push(MHItem::load(MHTag::Eyes, eyes, &asset_server));
+        parts.push(MHItem::load(MHTag::Eyebrows, eyebrows, &asset_server));
+        parts.push(MHItem::load(MHTag::Eyelashes, eyelashes, &asset_server));
+        parts.push(MHItem::load(MHTag::Teeth, teeth, &asset_server));
+        parts.push(MHItem::load(MHTag::Tongue, tongue, &asset_server));
+        parts.push(MHItem::load(MHTag::Hair, hair, &asset_server));
+        for clothing_item in clothing.iter() {
+            parts.push(MHItem::load(MHTag::Clothes, clothing_item, &asset_server));
+        }
+
+        info!("offset: {:?}", clothing_offset);
         commands
             .entity(e)
             .remove::<CharacterProcessingTask>()
-            .insert(HumanAssets::from_components(
-                HumanComponents {
-                    rig,
-                    skin,
-                    eyes,      // now Option
-                    eyebrows,  // now Option
-                    eyelashes, // now Option
-                    teeth,     // now Option
-                    tongue,    // now Option
-                    hair,
-                    clothing,
-                    morphs,
-                    phenotype,
-                    clothing_offset,
-                },
-                &asset_server,
-            ));
+            .insert(HumanAssets {
+                skin_obj_base: asset_server.load(skin.mesh.obj().to_string()),
+                skin_proxy: asset_server.load(skin.mesh.proxy().to_string()),
+                skin_material: asset_server.load(skin.material.mhmat().to_string()),
+                rig_bones: asset_server.load(rig.rig_json_path().to_string()),
+                rig_weights: asset_server.load(rig.weights().to_string()),
+                clothing_offset: clothing_offset.0,
+                parts,
+                morphs: morphs
+                    .0
+                    .iter()
+                    .filter_map(|Morph { target, value }| {
+                        target
+                            .target_path(*value)
+                            .map(|path| (asset_server.load(path.to_string()), *value))
+                    })
+                    .collect(),
+                phenotype_morphs: phenotype
+                    .all_targets()
+                    .into_iter()
+                    .map(|(path, weight)| (asset_server.load(path), weight))
+                    .collect(),
+            });
     }
 }
 
-fn init_existing_character(
-    mut commands: Commands,
-    query: Query<CharacterQuery, (With<Human>, Without<HumanAssets>)>,
-    asset_server: Res<AssetServer>,
-) {
-    for (
-        e,
-        rig,
-        skin,
-        eyes,
-        eyebrows,
-        eyelashes,
-        teeth,
-        tongue,
-        hair,
-        clothing,
-        morphs,
-        phenotype,
-        clothing_offset,
-    ) in query.iter()
-    {
-        commands.entity(e).insert(HumanAssets::from_components(
-            HumanComponents {
-                rig,
-                skin,
-                eyes,      // now Option
-                eyebrows,  // now Option
-                eyelashes, // now Option
-                teeth,     // now Option
-                tongue,    // now Option
-                hair,
-                clothing,
-                morphs,
-                phenotype,
-                clothing_offset,
-            },
-            &asset_server,
-        ));
+//
+fn init_existing_character(mut query: Query<(Entity, &mut Skin), With<Human>>) {
+    for (_e, mut _skin) in query.iter_mut() {
+        //info!("accessing human to trigger update",)
     }
 }
 
@@ -524,13 +508,16 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
 /// Update Character and trigger CharacterGenerate
 fn update_character(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut CharacterProcessingTask, &FloorOffset)>,
-    children_query: Query<&Children>,
-    character_part_query: Query<&MHTag>,
+    mut query: Query<(
+        Entity,
+        Option<&Children>,
+        &mut CharacterProcessingTask,
+        &FloorOffset,
+    )>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    for (entity, mut task, floor_offset) in query.iter_mut() {
+    for (entity, children_maybe, mut task, floor_offset) in query.iter_mut() {
         if let Some(CharacterProcessingOutput {
             skeleton,
             parts,
@@ -538,20 +525,59 @@ fn update_character(
             min_y,
         }) = future::block_on(future::poll_once(&mut task.0))
         {
-            commands.entity(entity).remove::<CharacterProcessingTask>();
+            commands
+                .entity(entity)
+                .remove::<CharacterProcessingTask>() // cleanup task
+                .insert(AnimationPlayer::default());
 
-            // TODO: just delete all children?
-            // Clean up previous character parts - collect first to avoid iterator invalidation
-            let parts_to_despawn: Vec<Entity> = children_query
-                .iter_descendants(entity)
-                .filter(|&child| character_part_query.get(child).is_ok())
-                .collect();
-            for e in parts_to_despawn {
-                commands.entity(e).try_despawn();
+            // remove all children
+            if let Some(children) = children_maybe {
+                for e in children.iter() {
+                    commands.entity(e).despawn();
+                }
             }
 
-            // Spawn skeleton bones and get joint entities
-            let bone_entities = spawn_skeleton_bones(&skeleton, entity, &mut commands);
+            let mut bone_entities = Vec::with_capacity(skeleton.bones.len());
+
+            // Spawn all bones
+            for (bone_idx, bone) in skeleton.bones.iter().enumerate() {
+                // Build hierarchical name path for AnimationTarget
+                // Path: bone -> ... -> root
+                let mut path = vec![Name::new(bone.name.clone())];
+                let mut current_idx = bone_idx;
+
+                while let Some(parent_idx) = skeleton.hierarchy[current_idx] {
+                    path.push(Name::new(skeleton.bones[parent_idx].name.clone()));
+                    current_idx = parent_idx;
+                }
+
+                let bone_entity = commands
+                    .spawn((
+                        Name::new(bone.name.clone()),
+                        skeleton.bind_pose[bone_idx],
+                        GlobalTransform::default(),
+                        AnimationTarget {
+                            id: AnimationTargetId::from_names(path.iter().rev()),
+                            player: entity,
+                        },
+                        Visibility::default(),
+                    ))
+                    .id();
+                bone_entities.push(bone_entity);
+            }
+
+            // Wire up parent-child hierarchy
+            for (bone_idx, &parent_idx_opt) in skeleton.hierarchy.iter().enumerate() {
+                let bone = bone_entities[bone_idx];
+                if let Some(parent_idx) = parent_idx_opt {
+                    commands
+                        .entity(bone_entities[parent_idx])
+                        .add_children(&[bone]);
+                } else {
+                    // Root bones attach to parent entity
+                    commands.entity(entity).add_children(&[bone]);
+                }
+            }
 
             // Create SkinnedMesh component - shared by body and all parts
             let inverse_bindposes =
@@ -563,7 +589,7 @@ fn update_character(
 
             // Capsule collider sized to character
             let radius = 0.25;
-            let length = (height - radius * 2.0).max(0.1);            
+            let length = (height - radius * 2.0).max(0.1);
             let offset_y = min_y - floor_offset.0 + radius + length / 2.0;
 
             // Body mesh on main entity + faceshape deformation data
@@ -580,16 +606,14 @@ fn update_character(
 
             // parts
             for a in parts.into_iter() {
-                match a.tag {                    
+                match a.tag {
                     MHTag::Skin => {
-                        commands.entity(entity)
-                        .insert((
+                        commands.entity(entity).insert((
                             Mesh3d(meshes.add(a.mesh)),
                             MeshMaterial3d(a.mat),
-                            skinned_mesh.clone(),                                
-                        ));                                                    
-                        
-                    },
+                            skinned_mesh.clone(),
+                        ));
+                    }
                     _ => {
                         commands.spawn((
                             ChildOf(entity),
@@ -600,9 +624,7 @@ fn update_character(
                             a.tag,
                         ));
                     }
-          
                 };
-                
             }
 
             // Notify character complete

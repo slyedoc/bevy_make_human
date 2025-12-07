@@ -12,6 +12,9 @@ use bevy_inspector_egui::prelude::*;
     Visibility,
     Rig,
     Skin,
+    Eyes,
+    Eyebrows,
+    Eyelashes,
     Clothing,
     ClothingOffset,
     FloorOffset,
@@ -39,25 +42,25 @@ impl Default for Skin {
 // They implement MHPart trait for generic handling
 
 // Clothing is the only multi-item part, needs wrapper
-#[derive(Component, Clone, Default, Reflect)]
+#[derive(Component, Clone, Default, Debug, Reflect, Deref, DerefMut)]
 pub struct Clothing(pub Vec<ClothingAsset>);
 
 /// Uses normals to offset clothing away from skin, hack to reduce z-fighting
 // TODO: replace with Delete Vertex Groups
-#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions, Deref, DerefMut)]
+#[derive(Component, Clone, Copy, Default, Debug, Reflect, InspectorOptions, Deref, DerefMut)]
 #[reflect(Component, InspectorOptions)]
 pub struct ClothingOffset(
     #[inspector(min = 0.0, max = 0.01, speed = 0.0001, display = NumberDisplay::Slider)] pub f32,
 );
 
 /// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
-#[derive(Component, Clone, Copy, Default, Reflect, InspectorOptions)]
+#[derive(Component, Clone, Copy, Default, Debug, Reflect, InspectorOptions)]
 #[reflect(Component, InspectorOptions)]
 pub struct FloorOffset(
     #[inspector(min = -0.1, max = 0.1, speed = 0.001, display = NumberDisplay::Slider)] pub f32,
 );
 
-#[derive(Component, Clone, Default)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct Morphs(pub Vec<Morph>);
 
 // Marker components body parts

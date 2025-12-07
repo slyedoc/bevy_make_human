@@ -1,68 +1,10 @@
 //! Skeleton and bone structures for MakeHuman characters
 
 use bevy::{
-    animation::{AnimationTarget, AnimationTargetId},
     math::Affine3A,
     platform::collections::HashMap,
     prelude::*,
 };
-
-
-/// Spawn skeleton bone entities with proper hierarchy and AnimationTarget components
-/// AnimationPlayer is added to parent entity, bones are direct children
-pub fn spawn_skeleton_bones(
-    skeleton: &Skeleton,
-    parent: Entity,
-    commands: &mut Commands,
-) -> Vec<Entity> {
-    // Add AnimationPlayer to parent entity
-    commands.entity(parent).insert(AnimationPlayer::default());
-
-    let mut bone_entities = Vec::with_capacity(skeleton.bones.len());
-
-    // Spawn all bones
-    for (bone_idx, bone) in skeleton.bones.iter().enumerate() {
-        // Build hierarchical name path for AnimationTarget
-        // Path: bone -> ... -> root
-        let mut path = vec![Name::new(bone.name.clone())];
-        let mut current_idx = bone_idx;
-
-        while let Some(parent_idx) = skeleton.hierarchy[current_idx] {
-            path.push(Name::new(skeleton.bones[parent_idx].name.clone()));
-            current_idx = parent_idx;
-        }
-
-        let bone_entity = commands
-            .spawn((
-                Name::new(bone.name.clone()),
-                skeleton.bind_pose[bone_idx],
-                GlobalTransform::default(),
-                AnimationTarget {
-                    id: AnimationTargetId::from_names(path.iter().rev()),
-                    player: parent,
-                },
-                Visibility::default(),
-            ))
-            .id();
-
-        bone_entities.push(bone_entity);
-    }
-
-    // Wire up parent-child hierarchy
-    for (bone_idx, &parent_idx_opt) in skeleton.hierarchy.iter().enumerate() {
-        let bone = bone_entities[bone_idx];
-        if let Some(parent_idx) = parent_idx_opt {
-            commands
-                .entity(bone_entities[parent_idx])
-                .add_children(&[bone]);
-        } else {
-            // Root bones attach to parent entity
-            commands.entity(parent).add_children(&[bone]);
-        }
-    }
-
-    bone_entities
-}
 
 /// Component storing character skeleton - bones, hierarchy, bind pose
 #[derive(Component, Clone)]
