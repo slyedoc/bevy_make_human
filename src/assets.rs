@@ -6,10 +6,10 @@ use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 
 /// Trait for MakeHuman part assets with mhclo/mhmat/obj/thumb
 pub trait MHPart: Copy + 'static {
-    fn mhclo(&self) -> &str;
-    fn mhmat(&self) -> &str;
-    fn obj(&self) -> &str;
-    fn thumb(&self) -> &str;
+    fn mhclo(&self) -> &'static str;
+    fn mhmat(&self) -> &'static str;
+    fn obj(&self) -> &'static str;
+    fn thumb(&self) -> &'static str;
 }
 
 
@@ -19,6 +19,7 @@ include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 /// Converts Enums to Handles
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct HumanAssets {
     pub skin_obj_base: Handle<ObjBaseMesh>,
     pub skin_proxy: Handle<ProxyAsset>,
@@ -110,7 +111,6 @@ pub struct MHItemFinal {
     pub mat: Handle<StandardMaterial>, // dont do anything currently with material, but we need pass it along
     pub mesh: Handle<Mesh>,    
 }
-
 
 /// A morph target with a value from -1.0 to 1.0
 /// Negative values use the "decr" target, positive use "incr"

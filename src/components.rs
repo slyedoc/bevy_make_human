@@ -1,15 +1,30 @@
 use crate::assets::*;
-use bevy::prelude::*;
-use bevy_inspector_egui::inspector_options::std_options::NumberDisplay;
-use bevy_inspector_egui::prelude::*;
+use bevy::{ecs::query::QueryData, prelude::*};
+use bevy_inspector_egui::{inspector_options::std_options::NumberDisplay, prelude::*};
 
-/// Main Human marker - only truly required components
-/// Eyes, Eyebrows, Eyelashes, Teeth, Tongue, Hair are all optional
+#[derive(QueryData)]
+pub struct HumanQuery {
+    pub entity: Entity,
+    pub name: Option<&'static Name>,
+    pub rig: &'static Rig,
+    pub skin: &'static Skin,
+    pub eyes: &'static Eyes,
+    pub eyebrows: &'static Eyebrows,
+    pub eyelashes: &'static Eyelashes,
+    pub teeth: &'static Teeth,
+    pub tongue: &'static Tongue,
+    pub hair: &'static Hair,
+    pub morphs: &'static Morphs,
+    pub phenotype: &'static Phenotype,
+    pub clothing: &'static Clothing,
+    pub floor_offset: &'static FloorOffset,
+    pub height_offset: &'static ClothingOffset,
+    pub clothing_offset: &'static ClothingOffset,
+}
+
+/// Human
 #[derive(Component, Default)]
 #[require(
-    Phenotype,
-    Transform,
-    Visibility,
     Rig,
     Skin,
     Eyes,
@@ -18,9 +33,19 @@ use bevy_inspector_egui::prelude::*;
     Clothing,
     ClothingOffset,
     FloorOffset,
-    Morphs
+    Morphs,
+    Phenotype,
+    HumanDirty, // will trigger a rebuild when spawned
+    // bevy
+    Transform,
+    Visibility,
 )]
 pub struct Human;
+
+// marker comonent to track if human needs to be rebuilt
+#[derive(Component, Clone, Reflect, Default)]
+pub struct HumanDirty;
+
 
 #[derive(Component, Clone, Reflect)]
 pub struct Skin {
@@ -54,13 +79,13 @@ pub struct ClothingOffset(
 );
 
 /// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
-#[derive(Component, Clone, Copy, Default, Debug, Reflect, InspectorOptions)]
+#[derive(Component, Clone, Copy, Default, Debug, Reflect, InspectorOptions, Deref, DerefMut)]
 #[reflect(Component, InspectorOptions)]
 pub struct FloorOffset(
     #[inspector(min = -0.1, max = 0.1, speed = 0.001, display = NumberDisplay::Slider)] pub f32,
 );
 
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Deref, DerefMut, Reflect)]
 pub struct Morphs(pub Vec<Morph>);
 
 // Marker components body parts

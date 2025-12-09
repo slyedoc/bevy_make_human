@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = []
-feathers = ["bevy/experimental_bevy_feathers"]
+default = ["feathers", "debug_draw"]
+feathers = ["bevy/experimental_bevy_feathers", "bevy_ui_text_input", "cosmic-text", "bevy_enhanced_input"]
 debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
@@ -22,18 +22,23 @@ bevy_asset_loader = { git="https://github.com/slyedoc/bevy_asset_loader.git", br
 ] }
 # fork updated for bevy 0.17
 iyes_progress = { git = "https://github.com/funatsufumiya/iyes_progress.git", branch = "feat/bevy_0.17" }
-# fork updated for bevy 0.17
-bevy_mod_billboard = { git = "https://github.com/kisya-games/bevy_mod_billboard.git", branch = "bevy-0.17", optional = true }
+
+obj = "0.10.2"
+bevy_obj = { version = "0.17", default-features = false, features = ["mesh"] }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rand = "0.9"
+
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "1.0"
 
-# 
-obj = "0.10.2"
-bevy_obj = { version = "0.17", default-features = false, features = ["mesh"] }
+# Optional debug_draw
+bevy_mod_billboard = { git = "https://github.com/kisya-games/bevy_mod_billboard.git", branch = "bevy-0.17", optional = true }
+
+# Optional ui
+bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "export-text-input-pipeline", optional = true }
+cosmic-text = { version = "0.14", optional = true }
+bevy_enhanced_input = { version = "0.19", optional = true }
 
 [[example]]
 name = "basic"
@@ -56,6 +61,7 @@ avian3d = { version = "0.4", features = [
     "debug-plugin",
     "diagnostic_ui",
 ] }
+#rand = "0.9"
 
 [build-dependencies]
 serde_json = "1.0"

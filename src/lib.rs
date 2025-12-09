@@ -4,6 +4,8 @@ pub mod components;
 pub mod debug_draw;
 pub mod loaders;
 pub mod skeleton;
+#[cfg(feature = "feathers")]
+pub mod ui;
 pub mod util;
 
 use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
@@ -11,10 +13,20 @@ use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
     pub use crate::debug_draw::*;
+
+    #[cfg(feature = "feathers")]
+    pub use crate::ui::{
+        dropdown::{DropdownOption, dropdown},
+        filter_dropdown::dropdown_filter,
+        register_filter_dropdown,
+        scroll::{ScrollProps, scroll},
+        text_input::{TextInputProps, text_input},
+    };
+
     #[allow(unused_imports)]
     pub use crate::{
-        CharacterComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*,
-        skeleton::*, util::*,
+        HumanComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*, skeleton::*,
+        util::*,
     };
 }
 
@@ -35,9 +47,9 @@ pub enum MHState {
     Ready,
 }
 
-/// Trigger to notify character generation is complete
+/// Trigger to notify Human generation is complete
 #[derive(EntityEvent)]
-pub struct CharacterComplete {
+pub struct HumanComplete {
     pub entity: Entity,
 }
 
@@ -50,6 +62,8 @@ impl Plugin for MakeHumanPlugin {
             bevy_obj::ObjPlugin,
             #[cfg(feature = "debug_draw")]
             debug_draw::MakeHumanDebugPlugin,
+            #[cfg(feature = "feathers")]
+            ui::UiPlugin,
         ))
         .init_state::<MHState>()
         .add_loading_state(
@@ -67,10 +81,14 @@ impl Plugin for MakeHumanPlugin {
         // 1. On load or change, load needed assets,
         // 2. Once loaded, generate new assets(mesh) in async task
         // 3. Apply generated assets
-        .add_systems(OnEnter(MHState::Ready), init_existing_character)
         .add_systems(
             Update,
-            (character_changed, character_loading, update_character)
+            (
+                dirty_check,
+                human_changed,
+                loading_human_assets,
+                update_human,
+            )
                 .run_if(in_state(MHState::Ready)),
         );
 
@@ -156,7 +174,7 @@ fn build_basemesh(
     let obj_base_mesh = obj_assets.get(&base_mesh_assets.obj).unwrap().clone();
 
     let task = AsyncComputeTaskPool::get().spawn(async move {
-        // Get mesh arrays and build mhid_lookup, takes 220ms
+        // Get mesh and vertex map and build mhid_lookup, takes 220ms
         let vtx_data = get_vertex_positions(&obj_base_mesh.mesh);
         let vertex_map = generate_vertex_map(&obj_base_mesh.vertices, &vtx_data);
         let mhid_lookup = generate_mhid_lookup(&vertex_map);
@@ -199,12 +217,39 @@ fn poll_basemesh_task(
     }
 }
 
+/// mark Human as dirty when relevant components change
+fn dirty_check(
+    mut commands: Commands,
+    query: Query<
+        Entity,
+        Or<(
+            Changed<Rig>,
+            Changed<Skin>,
+            Changed<Eyes>,
+            Changed<Eyebrows>,
+            Changed<Eyelashes>,
+            Changed<Teeth>,
+            Changed<Tongue>,
+            Changed<Hair>,
+            Changed<Clothing>,
+            Changed<ClothingOffset>,
+            Changed<Morphs>,
+            Changed<Phenotype>,
+            Changed<FloorOffset>,
+        )>,
+    >,
+) {
+    for e in query.iter() {
+        commands.entity(e).insert(HumanDirty);
+    }
+}
+
 /// Task component for async character processing
 #[derive(Component)]
-pub struct CharacterProcessingTask(Task<CharacterProcessingOutput>);
+pub struct HumanProcessingTask(Task<HumanProcessingOutput>);
 
-/// All data needed for character processing (extracted from assets)
-struct CharacterProcessingInput {
+/// All data needed for human processing (extracted from assets)
+struct HumanProcessingInput {
     base_vertices: Vec<Vec3>,
     base_vertex_groups: VertexGroups,
 
@@ -225,92 +270,48 @@ struct CharacterProcessingInput {
     clothing_offset: f32,
 }
 
-/// Result of character processing
-struct CharacterProcessingOutput {
+/// Result of human processing
+struct HumanProcessingOutput {
     skeleton: Skeleton,
     parts: Vec<MHItemResult>,
-    /// Character height (max_y - min_y of morphed vertices)
+    /// Height (max_y - min_y of morphed vertices)
     height: f32,
     /// Min Y of morphed vertices (for ground offset)
     min_y: f32,
 }
 
-fn character_changed(
+fn human_changed(
     mut commands: Commands,
-    query: Query<
-        (
-            Entity,
-            &Rig,
-            &Skin,
-            &Eyes,
-            &Eyebrows,
-            &Eyelashes,
-            &Teeth,
-            &Tongue,
-            &Hair,
-            &Clothing,
-            &Morphs,
-            &Phenotype,
-            &ClothingOffset,
-        ),
-        Or<(
-            Changed<Rig>,
-            Changed<Skin>,
-            Changed<Eyes>,
-            Changed<Eyebrows>,
-            Changed<Eyelashes>,
-            Changed<Teeth>,
-            Changed<Tongue>,
-            Changed<Hair>,
-            Changed<Clothing>,
-            Changed<ClothingOffset>,
-            Changed<Morphs>,
-            Changed<Phenotype>,
-            Changed<FloorOffset>,
-        )>,
-    >,
+    query: Query<HumanQuery, With<HumanDirty>>,
     asset_server: Res<AssetServer>,
 ) {
-    for (
-        e,
-        rig,
-        skin,
-        eyes,
-        eyebrows,
-        eyelashes,
-        teeth,
-        tongue,
-        hair,
-        clothing,
-        morphs,
-        phenotype,
-        clothing_offset,
-    ) in query.iter()
-    {
+    for h in query.iter() {
         let mut parts = vec![];
-        parts.push(MHItem::load(MHTag::Eyes, eyes, &asset_server));
-        parts.push(MHItem::load(MHTag::Eyebrows, eyebrows, &asset_server));
-        parts.push(MHItem::load(MHTag::Eyelashes, eyelashes, &asset_server));
-        parts.push(MHItem::load(MHTag::Teeth, teeth, &asset_server));
-        parts.push(MHItem::load(MHTag::Tongue, tongue, &asset_server));
-        parts.push(MHItem::load(MHTag::Hair, hair, &asset_server));
-        for clothing_item in clothing.iter() {
+        parts.push(MHItem::load(MHTag::Eyes, h.eyes, &asset_server));
+        parts.push(MHItem::load(MHTag::Eyebrows, h.eyebrows, &asset_server));
+        parts.push(MHItem::load(MHTag::Eyelashes, h.eyelashes, &asset_server));
+        parts.push(MHItem::load(MHTag::Teeth, h.teeth, &asset_server));
+        parts.push(MHItem::load(MHTag::Tongue, h.tongue, &asset_server));
+        parts.push(MHItem::load(MHTag::Hair, h.hair, &asset_server));
+        for clothing_item in h.clothing.iter() {
             parts.push(MHItem::load(MHTag::Clothes, clothing_item, &asset_server));
         }
 
-        info!("offset: {:?}", clothing_offset);
         commands
-            .entity(e)
-            .remove::<CharacterProcessingTask>()
+            .entity(h.entity)
+            .remove::<HumanDirty>()
+            // TODO: cancel existing task?
+            .remove::<HumanProcessingTask>() // stop current builds,
             .insert(HumanAssets {
-                skin_obj_base: asset_server.load(skin.mesh.obj().to_string()),
-                skin_proxy: asset_server.load(skin.mesh.proxy().to_string()),
-                skin_material: asset_server.load(skin.material.mhmat().to_string()),
-                rig_bones: asset_server.load(rig.rig_json_path().to_string()),
-                rig_weights: asset_server.load(rig.weights().to_string()),
-                clothing_offset: clothing_offset.0,
+                skin_obj_base: asset_server.load(h.skin.mesh.obj().to_string()),
+                skin_proxy: asset_server.load(h.skin.mesh.proxy().to_string()),
+                skin_material: asset_server.load(h.skin.material.mhmat().to_string()),
+                rig_bones: asset_server.load(h.rig.rig_json_path().to_string()),
+                rig_weights: asset_server.load(h.rig.weights().to_string()),
+                clothing_offset: h.clothing_offset.0,
                 parts,
-                morphs: morphs
+                morphs: h
+                    .morphs
                     .0
                     .iter()
                     .filter_map(|Morph { target, value }| {
@@ -319,7 +320,8 @@ fn character_changed(
                             .map(|path| (asset_server.load(path.to_string()), *value))
                     })
                     .collect(),
-                phenotype_morphs: phenotype
+                phenotype_morphs: h
+                    .phenotype
                     .all_targets()
                     .into_iter()
                     .map(|(path, weight)| (asset_server.load(path), weight))
@@ -328,14 +330,7 @@ fn character_changed(
     }
 }
 
-//
-fn init_existing_character(mut query: Query<(Entity, &mut Skin), With<Human>>) {
-    for (_e, mut _skin) in query.iter_mut() {
-        //info!("accessing human to trigger update",)
-    }
-}
-
-fn character_loading(
+fn loading_human_assets(
     mut commands: Commands,
     mut query: Query<(Entity, &HumanAssets)>,
     asset_server: Res<AssetServer>,
@@ -374,7 +369,7 @@ fn character_loading(
             );
 
             // Extract for task
-            let input = CharacterProcessingInput {
+            let input = HumanProcessingInput {
                 base_vertices: base_mesh.vertices.clone(),
                 base_vertex_groups: base_mesh.vertex_groups.clone(),
                 phenotype_morphs: assets
@@ -399,16 +394,16 @@ fn character_loading(
             };
 
             // Spawn async task
-            let task = AsyncComputeTaskPool::get().spawn(async move { process_character(input) });
+            let task = AsyncComputeTaskPool::get().spawn(async move { process_human(input) });
             commands
                 .entity(e)
                 .remove::<HumanAssets>()
-                .insert(CharacterProcessingTask(task));
+                .insert(HumanProcessingTask(task));
         }
     }
 }
 
-fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutput {
+fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
     let mut morphed_vertices = input.base_vertices.clone();
 
     // Apply phenotype morphs
@@ -489,7 +484,7 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
         mat: input.skin_material.clone(),
     });
 
-    // Calculate character height from morphed vertices
+    // Calculate human height from morphed vertices
     let (min_y, max_y) = morphed_vertices
         .iter()
         .fold((f32::MAX, f32::MIN), |(min, max), v| {
@@ -497,7 +492,7 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
         });
     let height = max_y - min_y;
 
-    CharacterProcessingOutput {
+    HumanProcessingOutput {
         skeleton,
         parts,
         height,
@@ -505,20 +500,20 @@ fn process_character(input: CharacterProcessingInput) -> CharacterProcessingOutp
     }
 }
 
-/// Update Character and trigger CharacterGenerate
-fn update_character(
+/// Update human and trigger HumanGenerate
+fn update_human(
     mut commands: Commands,
     mut query: Query<(
         Entity,
         Option<&Children>,
-        &mut CharacterProcessingTask,
+        &mut HumanProcessingTask,
         &FloorOffset,
     )>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     for (entity, children_maybe, mut task, floor_offset) in query.iter_mut() {
-        if let Some(CharacterProcessingOutput {
+        if let Some(HumanProcessingOutput {
             skeleton,
             parts,
             height,
@@ -527,7 +522,7 @@ fn update_character(
         {
             commands
                 .entity(entity)
-                .remove::<CharacterProcessingTask>() // cleanup task
+                .remove::<HumanProcessingTask>() // cleanup task
                 .insert(AnimationPlayer::default());
 
             // remove all children
@@ -580,8 +575,7 @@ fn update_character(
             }
 
             // Create SkinnedMesh component - shared by body and all parts
-            let inverse_bindposes =
-                inverse_bindpose_assets.add(skeleton.inverse_bind_matrices.clone());
+            let inverse_bindposes = inverse_bindpose_assets.add(skeleton.inverse_bind_matrices);
             let skinned_mesh = SkinnedMesh {
                 inverse_bindposes,
                 joints: bone_entities.clone(),
@@ -628,7 +622,7 @@ fn update_character(
             }
 
             // Notify character complete
-            commands.trigger(CharacterComplete { entity });
+            commands.trigger(HumanComplete { entity });
         }
     }
 }

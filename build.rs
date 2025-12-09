@@ -272,7 +272,7 @@ fn generate_asset_enum(
                 continue;
             }
             writeln!(f, "    /// Get .{} path", file_type)?;
-            writeln!(f, "    pub fn {}(&self) -> &str {{", clean_name)?;
+            writeln!(f, "    pub fn {}(&self) -> &'static str {{", clean_name)?;
             writeln!(f, "        self.get_str(\"{}\").unwrap()", clean_name)?;
             writeln!(f, "    }}")?;
             writeln!(f)?;
@@ -281,7 +281,7 @@ fn generate_asset_enum(
         // Texture accessors
         for texture_type in pattern.textures {
             writeln!(f, "    /// Get {} texture path if available", texture_type)?;
-            writeln!(f, "    pub fn {}_texture(&self) -> Option<&str> {{", texture_type)?;
+            writeln!(f, "    pub fn {}_texture(&self) -> Option<&'static str> {{", texture_type)?;
             writeln!(f, "        use strum::EnumProperty;")?;
             writeln!(f, "        self.get_str(\"{}\")", texture_type)?;
             writeln!(f, "    }}")?;
@@ -433,6 +433,9 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "        self.get_str(\"bvh\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
+    writeln!(f, "    pub fn thumb(&self) -> &'static str {{")?;
+    writeln!(f, "        self.get_str(\"thumb\").unwrap()")?;
+    writeln!(f, "    }}")?;
     writeln!(f, "}}")?;
     writeln!(f)?;
 
@@ -495,12 +498,12 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Generate helper methods
     writeln!(f, "impl Rig {{")?;
 
-    writeln!(f, "    pub fn rig_json_path(&self) -> &str {{")?;
+    writeln!(f, "    pub fn rig_json_path(&self) -> &'static str {{")?;
     writeln!(f, "        self.get_str(\"rig_json\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    pub fn weights(&self) -> &str {{")?;
+    writeln!(f, "    pub fn weights(&self) -> &'static str {{")?;
     writeln!(f, "        self.get_str(\"weights\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
@@ -723,12 +726,12 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         // Impl
         writeln!(f, "impl {} {{", enum_name)?;
         writeln!(f, "    /// Get positive target path")?;
-        writeln!(f, "    pub fn pos_path(&self) -> Option<&str> {{")?;
+        writeln!(f, "    pub fn pos_path(&self) -> Option<&'static str> {{")?;
         writeln!(f, "        self.get_str(\"pos\")")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
         writeln!(f, "    /// Get negative target path")?;
-        writeln!(f, "    pub fn neg_path(&self) -> Option<&str> {{")?;
+        writeln!(f, "    pub fn neg_path(&self) -> Option<&'static str> {{")?;
         writeln!(f, "        self.get_str(\"neg\")")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
@@ -740,7 +743,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "    /// Get target path based on sign of value")?;
         writeln!(f, "    /// For singles, always returns pos_path")?;
         writeln!(f, "    /// For binary, neg value -> neg_path, pos value -> pos_path")?;
-        writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&str> {{")?;
+        writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{")?;
         writeln!(f, "        if self.is_single() || value >= 0.0 {{ self.pos_path() }} else {{ self.neg_path() }}")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
@@ -1362,10 +1365,10 @@ fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
 
     for enum_name in parts {
         writeln!(f, "impl MHPart for {} {{", enum_name)?;
-        writeln!(f, "    fn mhclo(&self) -> &str {{ self.get_str(\"mhclo\").unwrap() }}")?;
-        writeln!(f, "    fn mhmat(&self) -> &str {{ self.get_str(\"mhmat\").unwrap() }}")?;
-        writeln!(f, "    fn obj(&self) -> &str {{ self.get_str(\"obj\").unwrap() }}")?;
-        writeln!(f, "    fn thumb(&self) -> &str {{ self.get_str(\"thumb\").unwrap() }}")?;
+        writeln!(f, "    fn mhclo(&self) -> &'static str {{ self.get_str(\"mhclo\").unwrap() }}")?;
+        writeln!(f, "    fn mhmat(&self) -> &'static str {{ self.get_str(\"mhmat\").unwrap() }}")?;
+        writeln!(f, "    fn obj(&self) -> &'static str {{ self.get_str(\"obj\").unwrap() }}")?;
+        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }

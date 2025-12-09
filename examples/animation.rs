@@ -96,7 +96,7 @@ struct GltfAnimationAssets {
 
 #[allow(dead_code)]
 fn apply_gltf_animation(
-    trigger: On<CharacterComplete>,
+    trigger: On<HumanComplete>,
     mut human_query: Query<(&Rig, &mut Skeleton), With<Human>>,
     mut commands: Commands,
     assets: Res<GltfAnimationAssets>,
@@ -308,7 +308,7 @@ fn build_gltf_paths(
 // Apply a custom animation that moves multiple bones
 #[allow(dead_code)]
 fn apply_custom_animation(
-    trigger: On<CharacterComplete>,
+    trigger: On<HumanComplete>,
     mut commands: Commands,
     children_query: Query<&Children>,
     mut animation_player_query: Query<&mut AnimationPlayer>,
