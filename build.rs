@@ -1359,16 +1359,33 @@ fn generate_phenotype(f: &mut File, _assets_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Generate MHPart impl blocks for part enums (trait defined in assets.rs)
+/// Generate MHThumb and MHPart impl blocks for part enums (traits defined in assets.rs)
 fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
-    let parts = ["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
+    // Enums with thumb only (no mhclo/mhmat/obj)
+    let thumb_only = ["SkinMaterial", "SkinMesh"];
 
-    for enum_name in parts {
+    // Enums with full MHPart (mhclo/mhmat/obj/thumb)
+    let full_parts = ["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
+
+    // Generate MHThumb for thumb-only enums
+    for enum_name in thumb_only {
+        writeln!(f, "impl MHThumb for {} {{", enum_name)?;
+        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
+        writeln!(f, "}}")?;
+        writeln!(f)?;
+    }
+
+    // Generate MHThumb + MHPart for full part enums
+    for enum_name in full_parts {
+        writeln!(f, "impl MHThumb for {} {{", enum_name)?;
+        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
+        writeln!(f, "}}")?;
+        writeln!(f)?;
+
         writeln!(f, "impl MHPart for {} {{", enum_name)?;
         writeln!(f, "    fn mhclo(&self) -> &'static str {{ self.get_str(\"mhclo\").unwrap() }}")?;
         writeln!(f, "    fn mhmat(&self) -> &'static str {{ self.get_str(\"mhmat\").unwrap() }}")?;
         writeln!(f, "    fn obj(&self) -> &'static str {{ self.get_str(\"obj\").unwrap() }}")?;
-        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }

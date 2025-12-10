@@ -9,6 +9,7 @@ pub mod ui;
 pub mod util;
 
 use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
+pub use crate::assets::MHThumb;
 
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
@@ -24,7 +25,7 @@ pub mod prelude {
     #[allow(unused_imports)]
     pub use crate::{
         HumanComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*, skeleton::*,
-        util::*,
+        util::*, MHThumb,
     };
 }
 

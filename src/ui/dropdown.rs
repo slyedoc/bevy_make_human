@@ -169,7 +169,6 @@ pub fn dropdown<C: SpawnableList<ChildOf> + Send + Sync + 'static, B: Bundle>(
                         },
                         flex_direction: FlexDirection::Column,
                         corners: props.corners,
-                        bg_token: tokens::BUTTON_BG,
                         align_items: AlignItems::Stretch,
                     },
                     (),

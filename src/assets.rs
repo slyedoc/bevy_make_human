@@ -4,12 +4,16 @@ use bevy_inspector_egui::{inspector_options::std_options::NumberDisplay, prelude
 #[allow(unused_imports)]
 use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 
+/// Trait for assets with thumbnail
+pub trait MHThumb: Copy + 'static {
+    fn thumb(&self) -> &'static str;
+}
+
 /// Trait for MakeHuman part assets with mhclo/mhmat/obj/thumb
-pub trait MHPart: Copy + 'static {
+pub trait MHPart: MHThumb {
     fn mhclo(&self) -> &'static str;
     fn mhmat(&self) -> &'static str;
     fn obj(&self) -> &'static str;
-    fn thumb(&self) -> &'static str;
 }
 
 

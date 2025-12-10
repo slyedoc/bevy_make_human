@@ -1,10 +1,9 @@
 use bevy::{
     ecs::{
-        bundle::Bundle, observer::On, relationship::RelatedSpawner,
-        spawn::{SpawnRelated, SpawnWith}, system::Query,
+        bundle::Bundle, name::Name, observer::On, relationship::RelatedSpawner, spawn::{SpawnRelated, SpawnWith}, system::Query
     }, feathers::{
         rounded_corners::RoundedCorners,
-        theme::{ThemeBackgroundColor, ThemeToken}, tokens,
+        theme::ThemeBackgroundColor, tokens,
     }, math::Vec2, picking::events::{Pointer, Scroll as ScrollEvent}, ui::{
         AlignItems, ComputedNode, JustifyContent, Node, Overflow, OverflowAxis,
         PositionType, ScrollPosition, UiRect, Val, ZIndex,
@@ -28,8 +27,6 @@ pub struct ScrollProps {
     pub flex_direction: bevy::ui::FlexDirection,
     /// Rounded corners options
     pub corners: RoundedCorners,
-    /// Background color token
-    pub bg_token: ThemeToken,
     /// Align items (horizontal alignment for column layouts, vertical for row layouts)
     pub align_items: AlignItems,
 }
@@ -39,10 +36,9 @@ impl Default for ScrollProps {
         Self {
             width: Val::Percent(100.0),
             height: Val::Auto,
-            overflow: Overflow::visible(),
+            overflow: Overflow::hidden(),
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),
-            bg_token: tokens::WINDOW_BG,
+            corners: RoundedCorners::default(),            
             align_items: AlignItems::Stretch,
         }
     }
@@ -55,12 +51,11 @@ impl ScrollProps {
             width: Val::Percent(100.0),
             height,
             overflow: Overflow {
-                x: OverflowAxis::Visible,
+                x: OverflowAxis::Hidden,
                 y: OverflowAxis::Scroll,
             },
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),
-            bg_token: tokens::WINDOW_BG,
+            corners: RoundedCorners::default(),            
             align_items: AlignItems::Stretch,
         }
     }
@@ -72,11 +67,10 @@ impl ScrollProps {
             height: Val::Auto,
             overflow: Overflow {
                 x: OverflowAxis::Scroll,
-                y: OverflowAxis::Visible,
+                y: OverflowAxis::Hidden,
             },
             flex_direction: bevy::ui::FlexDirection::Row,
             corners: RoundedCorners::default(),
-            bg_token: tokens::WINDOW_BG,
             align_items: AlignItems::Stretch,
         }
     }
@@ -92,7 +86,6 @@ impl ScrollProps {
             },
             flex_direction: bevy::ui::FlexDirection::Column,
             corners: RoundedCorners::default(),
-            bg_token: tokens::WINDOW_BG,
             align_items: AlignItems::Stretch,
         }
     }
@@ -166,7 +159,7 @@ pub fn scroll<C: Bundle, B: Bundle>(
                     },
                     ScrollPosition::default(),
                     props.corners.to_border_radius(4.0),
-                    ThemeBackgroundColor(props.bg_token),
+                    ThemeBackgroundColor(tokens::WINDOW_BG),
                     observe(scroll_observer),
                     children,
                     overrides,
@@ -175,6 +168,7 @@ pub fn scroll<C: Bundle, B: Bundle>(
                 // Spawn vertical scrollbar if needed
                 if has_vscroll {
                     parent.spawn((
+                        Name::new("Scrollbar Vertical"),
                         Node {
                             width: Val::Px(SCROLLBAR_WIDTH),
                             height: Val::Percent(100.0),
@@ -187,6 +181,7 @@ pub fn scroll<C: Bundle, B: Bundle>(
                         ThemeBackgroundColor(tokens::SLIDER_BG),
                         ZIndex(1),
                         bevy::ecs::hierarchy::Children::spawn(bevy::ecs::spawn::Spawn((
+                            Name::new("Scrollbar Thumb"),
                             Node {
                                 width: Val::Percent(100.0),
                                 position_type: PositionType::Absolute,
@@ -202,6 +197,7 @@ pub fn scroll<C: Bundle, B: Bundle>(
                 // Spawn horizontal scrollbar if needed
                 if has_hscroll {
                     parent.spawn((
+                        Name::new("Scrollbar Horizontal"),
                         Node {
                             width: Val::Percent(100.0),
                             height: Val::Px(SCROLLBAR_WIDTH),
