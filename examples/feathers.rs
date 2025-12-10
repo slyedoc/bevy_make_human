@@ -40,7 +40,8 @@ fn main() -> AppExit {
         (
             handle_text_input_focus::<CameraFree>
                 .run_if(resource_changed::<bevy::input_focus::InputFocus>),
-            filter_options,
+            filter_text_changed::<DropdownFilterInput, Dropdown>,
+            filter_text_changed::<ClothingFilterInput, ClothingSection>,
         ),
     )
     .run()
@@ -288,8 +289,394 @@ fn on_human_click(
             dropdown_mh_thumb::<Eyelashes>(e, *h.eyelashes),
             dropdown_mh_thumb::<Teeth>(e, *h.teeth),
             dropdown_mh_thumb::<Tongue>(e, *h.tongue),
+            clothing_section(e, &h.clothing),
         ],
     ));
+}
+
+/// Clothing section with list of current items and add button
+fn clothing_section(human_entity: Entity, clothing: &Clothing) -> impl Bundle {
+    let items: Vec<_> = clothing
+        .iter()
+        .enumerate()
+        .map(|(idx, item)| clothing_item_row(human_entity, idx, *item))
+        .collect();
+
+    (
+        Name::new("ClothingSection"),
+        ClothingSection,
+        Node {
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::top(Val::Px(8.0)),
+            ..default()
+        },
+        children![
+            (
+                Text::new("Clothing"),
+                TextFont { font_size: 12.0, ..default() },
+                ThemedText
+            ),
+            (
+                Name::new("ClothingList"),
+                ClothingList,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    padding: UiRect::bottom(Val::Px(4.0)),
+                    ..default()
+                },
+                Children::spawn(SpawnIter(items.into_iter())),
+            ),
+            (
+                Name::new("AddClothingButton"),
+                ClothingAddButton,
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((Text::new("+ Add Clothing"), ThemedText)),
+                ),
+                observe(on_open_clothing_menu(human_entity)),
+            ),
+        ],
+        observe(on_clothing_select(human_entity)),
+        observe(on_clothing_remove(human_entity)),
+        observe(on_clothing_close),
+        observe(on_clothing_filter),
+    )
+}
+
+/// Marker for clothing section
+#[derive(Component)]
+struct ClothingSection;
+
+/// Marker for clothing list container
+#[derive(Component)]
+struct ClothingList;
+
+/// Marker for add clothing button
+#[derive(Component)]
+struct ClothingAddButton;
+
+/// Event for selecting clothing to add
+#[derive(EntityEvent)]
+struct ClothingSelect {
+    entity: Entity,
+    item: ClothingAsset,
+}
+
+/// Event for removing clothing
+#[derive(EntityEvent)]
+struct ClothingRemove {
+    entity: Entity,
+    idx: usize,
+}
+
+/// Event for closing clothing menu
+#[derive(EntityEvent)]
+struct ClothingClose {
+    entity: Entity,
+}
+
+/// Single clothing item row with name and remove button
+fn clothing_item_row(_human_entity: Entity, idx: usize, item: ClothingAsset) -> impl Bundle {
+    (
+        Name::new(format!("ClothingItem_{}", idx)),
+        ClothingItem(idx),
+        Node {
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: Val::Px(4.0),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        children![
+            (
+                Text::new(item.to_string()),
+                TextFont { font_size: 12.0, ..default() },
+                ThemedText,
+                Node { flex_grow: 1.0, ..default() },
+            ),
+            (
+                Node {
+                    width: Val::Px(24.0),
+                    height: Val::Px(24.0),
+                    ..default()
+                },
+                children![(
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((Text::new("×"), ThemedText)),
+                    ),
+                    observe(on_clothing_item_remove_click),
+                )],
+            ),
+        ],
+    )
+}
+
+/// Marker for clothing item with index
+#[derive(Component)]
+struct ClothingItem(usize);
+
+/// Marker for clothing menu
+#[derive(Component)]
+struct ClothingMenu;
+
+/// Marker for clothing option in menu
+#[derive(Component)]
+struct ClothingOption(ClothingAsset);
+
+/// Marker for clothing filter input
+#[derive(Component)]
+struct ClothingFilterInput;
+
+/// Marker for clothing options container
+#[derive(Component)]
+struct ClothingOptionsContainer;
+
+/// Click handler for remove button - triggers ClothingRemove event
+fn on_clothing_item_remove_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    item_query: Query<&ClothingItem>,
+    section_query: Query<&ClothingSection>,
+) {
+    // Find ClothingItem parent to get index
+    for ancestor in parent_query.iter_ancestors(trigger.entity) {
+        if let Ok(item) = item_query.get(ancestor) {
+            // Find ClothingSection ancestor to trigger event
+            for section_ancestor in parent_query.iter_ancestors(ancestor) {
+                if section_query.get(section_ancestor).is_ok() {
+                    commands.trigger(ClothingRemove {
+                        entity: section_ancestor,
+                        idx: item.0,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+}
+
+/// Handler for ClothingRemove event
+fn on_clothing_remove(
+    human_entity: Entity,
+) -> impl FnMut(On<ClothingRemove>, Commands, Query<&mut Clothing>, Query<&Children>, Query<Entity, With<ClothingList>>) {
+    move |trigger: On<ClothingRemove>,
+          mut commands: Commands,
+          mut clothing_query: Query<&mut Clothing>,
+          children_query: Query<&Children>,
+          list_query: Query<Entity, With<ClothingList>>| {
+        if let Ok(mut clothing) = clothing_query.get_mut(human_entity) {
+            if trigger.idx < clothing.len() {
+                clothing.remove(trigger.idx);
+                commands.entity(human_entity).insert(HumanDirty);
+
+                // Update UI - find ClothingList and rebuild children
+                for child in children_query.iter_descendants(trigger.entity) {
+                    if let Ok(list_entity) = list_query.get(child) {
+                        commands.entity(list_entity).despawn_children();
+                        for (idx, item) in clothing.iter().enumerate() {
+                            commands.entity(list_entity).with_child(
+                                clothing_item_row(human_entity, idx, *item)
+                            );
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Handler for ClothingSelect event
+fn on_clothing_select(
+    human_entity: Entity,
+) -> impl FnMut(On<ClothingSelect>, Commands, Query<&mut Clothing>, Query<&Children>, Query<Entity, With<ClothingList>>) {
+    move |trigger: On<ClothingSelect>,
+          mut commands: Commands,
+          mut clothing_query: Query<&mut Clothing>,
+          children_query: Query<&Children>,
+          list_query: Query<Entity, With<ClothingList>>| {
+        // Close menu
+        commands.trigger(ClothingClose {
+            entity: trigger.entity,
+        });
+
+        if let Ok(mut clothing) = clothing_query.get_mut(human_entity) {
+            if !clothing.contains(&trigger.item) {
+                clothing.push(trigger.item);
+                commands.entity(human_entity).insert(HumanDirty);
+
+                // Update UI - find ClothingList and add new item
+                for child in children_query.iter_descendants(trigger.entity) {
+                    if let Ok(list_entity) = list_query.get(child) {
+                        let idx = clothing.len() - 1;
+                        commands.entity(list_entity).with_child(
+                            clothing_item_row(human_entity, idx, trigger.item)
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Handler for ClothingClose event
+fn on_clothing_close(
+    trigger: On<ClothingClose>,
+    mut commands: Commands,
+    children_query: Query<&Children>,
+    menu_query: Query<&ClothingMenu>,
+) {
+    for child in children_query.iter_descendants(trigger.entity) {
+        if menu_query.get(child).is_ok() {
+            commands.entity(child).despawn();
+        }
+    }
+}
+
+/// Handler for ClothingFilter event
+fn on_clothing_filter(
+    trigger: On<FilterOptions>,
+    children_query: Query<&Children>,
+    options_container: Query<Entity, With<ClothingOptionsContainer>>,
+    mut query: Query<(&ClothingOption, &mut Node)>,
+) {
+    info!("filter clothing options: {}", trigger.filter);
+    for child in children_query.iter_descendants(trigger.entity) {
+        if let Ok(container) = options_container.get(child) {
+            for c in children_query.iter_descendants(container) {
+                if let Ok((option, mut node)) = query.get_mut(c) {
+                    let label = option.0.to_string().to_lowercase();
+                    let filter = trigger.filter.to_lowercase();
+                    let show = filter.is_empty() || label.contains(&filter);
+                    node.display = if show { Display::Flex } else { Display::None };
+                }
+            }
+            break;
+        }
+    }
+}
+
+/// Handler for opening clothing menu
+fn on_open_clothing_menu(
+    human_entity: Entity,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Res<AssetServer>, Query<&Children>, Query<&ClothingMenu>, Query<&ChildOf>, Query<&ClothingSection>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          asset_server: Res<AssetServer>,
+          children_query: Query<&Children>,
+          menu_query: Query<&ClothingMenu>,
+          parent_query: Query<&ChildOf>,
+          section_query: Query<&ClothingSection>| {
+        // Find ClothingSection ancestor
+        let section_entity = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|e| section_query.get(*e).is_ok())
+            .unwrap_or(trigger.entity);
+
+        // Check if menu already open
+        for child in children_query.iter_descendants(section_entity) {
+            if menu_query.get(child).is_ok() {
+                return;
+            }
+        }
+
+        let options: Vec<_> = ClothingAsset::iter()
+            .map(|item| {
+                let label = item.to_string();
+                let image = asset_server.load::<Image>(item.thumb());
+                (
+                    Name::new(label.clone()),
+                    ClothingOption(item),
+                    Node {
+                        width: Val::Percent(100.0),
+                        align_items: AlignItems::Center,
+                        min_height: Val::Px(28.0),
+                        ..default()
+                    },
+                    children![
+                        (
+                            Node {
+                                width: Val::Px(24.0),
+                                height: Val::Px(24.0),
+                                ..default()
+                            },
+                            ImageNode { image, ..default() },
+                        ),
+                        (
+                            button(
+                                ButtonProps::default(),
+                                (),
+                                Spawn((Text::new(label), ThemedText)),
+                            ),
+                            observe(on_clothing_option_click(human_entity, item)),
+                        ),
+                    ],
+                )
+            })
+            .collect();
+
+        commands.entity(section_entity).with_child((
+            ClothingMenu,
+            Name::new("ClothingMenu"),
+            Node {
+                flex_direction: FlexDirection::Column,
+                width: Val::Percent(100.0),
+                ..default()
+            },
+            ThemeBackgroundColor(tokens::WINDOW_BG),
+            ZIndex(10),
+            children![
+                (
+                    ClothingFilterInput,
+                    text_input(
+                        TextInputProps {
+                            width: Val::Percent(100.0),
+                            height: Val::Px(24.0),
+                            placeholder: "Filter...".to_string(),
+                            corners: RoundedCorners::Top,
+                            ..default()
+                        },
+                        TextInputContents::default(),
+                    ),
+                ),
+                scroll(
+                    ScrollProps::vertical(px(300.0)),
+                    (ClothingOptionsContainer, Name::new("ClothingOptions")),
+                    Children::spawn(SpawnIter(options.into_iter())),
+                ),
+            ],
+            Hovered(false),
+            observe(on_hover_exit),
+        ));
+    }
+}
+
+/// Click handler for clothing option - triggers ClothingSelect event
+fn on_clothing_option_click(
+    _human_entity: Entity,
+    item: ClothingAsset,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&ChildOf>, Query<&ClothingSection>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          parent_query: Query<&ChildOf>,
+          section_query: Query<&ClothingSection>| {
+        // Find ClothingSection ancestor
+        if let Some(section) = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|e| section_query.get(*e).is_ok())
+        {
+            commands.trigger(ClothingSelect {
+                entity: section,
+                item,
+            });
+        }
+    }
 }
 
 /// Event for selecting an option from the dropdown
@@ -307,7 +694,7 @@ pub struct DropdownClose {
 
 /// Event for filtering dropdown options
 #[derive(EntityEvent)]
-pub struct DropdownFilter {
+pub struct FilterOptions {
     entity: Entity,
     filter: String,
 }
@@ -478,7 +865,7 @@ fn on_dropdown_close(
 }
 
 fn on_dropdown_filter<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
-    trigger: On<DropdownFilter>,
+    trigger: On<FilterOptions>,
     children_query: Query<&Children>,
     dropdown_options_container: Query<Entity, With<DropdownOptionsContainer>>,
     mut query: Query<(&T, &mut Node)>,
@@ -674,20 +1061,22 @@ fn on_hover_exit(trigger: On<Pointer<Out>>, mut commands: Commands, hover_query:
     }
 }
 
-/// Filter options based on text input
-fn filter_text_changed(
+/// Filter options based on text input (for dropdowns)
+fn filter_text_changed<T: Component, K: Component>(
     filter_query: Query<
         (Entity, &TextInputContents),
-        (With<DropdownFilterInput>, Changed<TextInputContents>),
+        (With<T>, Changed<TextInputContents>),
     >,
+    
     parent_query: Query<&ChildOf>,
-    dropdown_query: Query<&Dropdown>,
+    dropdown_query: Query<&K>,
     mut commands: Commands,
 ) {
+    // Handle dropdown filters
     for (e, text) in filter_query.iter() {
         for c in parent_query.iter_ancestors(e) {
             if dropdown_query.contains(c) {
-                commands.trigger(DropdownFilter {
+                commands.trigger(FilterOptions {
                     entity: c,
                     filter: text.get().to_string(),
                 });
