@@ -64,12 +64,20 @@ pub struct ClothingOffset(
     #[inspector(min = 0.0, max = 0.01, speed = 0.0001, display = NumberDisplay::Slider)] pub f32,
 );
 
+impl From<f32> for ClothingOffset {
+    fn from(v: f32) -> Self { Self(v) }
+}
+
 /// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
 #[derive(Component, Clone, Copy, Default, Debug, Reflect, InspectorOptions, Deref, DerefMut)]
 #[reflect(Component, InspectorOptions)]
 pub struct FloorOffset(
     #[inspector(min = -0.1, max = 0.1, speed = 0.001, display = NumberDisplay::Slider)] pub f32,
 );
+
+impl From<f32> for FloorOffset {
+    fn from(v: f32) -> Self { Self(v) }
+}
 
 #[derive(Component, Clone, Debug, Default, Deref, DerefMut, Reflect)]
 pub struct Morphs(pub Vec<Morph>);

@@ -180,9 +180,10 @@ fn setup_ui(mut commands: Commands) {
         Name::new("ConfigPanel"),
         Node {
             position_type: PositionType::Absolute,
-            width: px(300.0),
+            width: px(400.0),
             top: px(20.0),
             left: px(20.0),
+            max_height: percent(80.0),
             flex_direction: FlexDirection::Column,
             row_gap: px(8.0),
             padding: UiRect::all(px(12.0)),
@@ -280,18 +281,167 @@ fn on_human_click(
                 ThemedText,
                 TextFont::from_font_size(14.0),
             ),
-            dropdown_mh::<Rig>(e, *h.rig),
-            dropdown_mh_thumb::<SkinMesh>(e, *h.skin_mesh),
-            dropdown_mh_thumb::<SkinMaterial>(e, *h.skin_material),
-            dropdown_mh_thumb::<Hair>(e, *h.hair),
-            dropdown_mh_thumb::<Eyes>(e, *h.eyes),
-            dropdown_mh_thumb::<Eyebrows>(e, *h.eyebrows),
-            dropdown_mh_thumb::<Eyelashes>(e, *h.eyelashes),
-            dropdown_mh_thumb::<Teeth>(e, *h.teeth),
-            dropdown_mh_thumb::<Tongue>(e, *h.tongue),
-            clothing_section(e, &h.clothing),
+            collapsible("General", true, children![
+                dropdown_mh::<Rig>(e, *h.rig),
+                dropdown_mh_thumb::<SkinMesh>(e, *h.skin_mesh),
+                dropdown_mh_thumb::<SkinMaterial>(e, *h.skin_material),
+                offset_slider::<FloorOffset>(e, "Floor", h.floor_offset.0, -0.1, 0.1),
+            ]),
+            collapsible("Head", true, children![
+                dropdown_mh_thumb::<Hair>(e, *h.hair),
+                dropdown_mh_thumb::<Eyes>(e, *h.eyes),
+                dropdown_mh_thumb::<Eyebrows>(e, *h.eyebrows),
+                dropdown_mh_thumb::<Eyelashes>(e, *h.eyelashes),
+                dropdown_mh_thumb::<Teeth>(e, *h.teeth),
+                dropdown_mh_thumb::<Tongue>(e, *h.tongue),
+            ]),
+            collapsible("Clothes", true, children![
+                clothing_section(e, &h.clothing),
+                offset_slider::<ClothingOffset>(e, "Clothing", h.clothing_offset.0, 0.0, 0.01),
+            ]),
         ],
     ));
+}
+
+/// Collapsible section with title and expandable content
+fn collapsible<C: Bundle>(title: &'static str, expanded: bool, content: C) -> impl Bundle {
+    (
+        Name::new(format!("Collapsible{}", title)),
+        Collapsible,
+        Node {
+            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            align_items: AlignItems::Start,            
+            padding: UiRect::top(Val::Px(4.0)),
+            ..default()
+        },
+        children![
+            (
+                Name::new("CollapsibleHeader"),
+                Node {
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![(
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((
+                            Text::new(format!("{} {}", if expanded { "▼" } else { "▶" }, title)),
+                            ThemedText,
+                            TextFont { font_size: 12.0, ..default() },
+                        )),
+                    ),
+                    observe(on_collapsible_toggle),
+                )],
+            ),
+            (
+                Name::new("CollapsibleContent"),
+                CollapsibleContent,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    width: Val::Percent(100.0),
+                    padding: UiRect::left(Val::Px(8.0)),
+                    display: if expanded { Display::Flex } else { Display::None },
+                    ..default()
+                },
+                content,
+            ),
+        ],
+    )
+}
+
+/// Marker for collapsible section
+#[derive(Component)]
+struct Collapsible;
+
+/// Marker for collapsible content
+#[derive(Component)]
+struct CollapsibleContent;
+
+/// Toggle collapsible on header click
+fn on_collapsible_toggle(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    collapsible_query: Query<&Collapsible>,
+    children_query: Query<&Children>,
+    mut content_query: Query<&mut Node, With<CollapsibleContent>>,
+    mut text_query: Query<&mut Text>,
+) {
+    // Find Collapsible parent
+    let Some(collapsible) = parent_query
+        .iter_ancestors(trigger.entity)
+        .find(|e| collapsible_query.get(*e).is_ok())
+    else {
+        return;
+    };
+
+    // Find content and toggle display
+    for child in children_query.iter_descendants(collapsible) {
+        if let Ok(mut node) = content_query.get_mut(child) {
+            let is_expanded = node.display == Display::Flex;
+            node.display = if is_expanded { Display::None } else { Display::Flex };
+
+            // Update header text arrow
+            for desc in children_query.iter_descendants(trigger.entity) {
+                if let Ok(mut text) = text_query.get_mut(desc) {
+                    let current = text.0.clone();
+                    if current.starts_with("▼") {
+                        text.0 = current.replacen("▼", "▶", 1);
+                    } else if current.starts_with("▶") {
+                        text.0 = current.replacen("▶", "▼", 1);
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+    }
+}
+
+/// Slider for offset values
+fn offset_slider<T: Component + Default + From<f32>>(
+    human_entity: Entity,
+    label: &'static str,
+    value: f32,
+    min: f32,
+    max: f32,
+) -> impl Bundle {
+    (
+        Name::new(format!("Slider{}", label)),
+        Node {
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::top(Val::Px(8.0)),
+            ..default()
+        },
+        children![
+            (
+                Text::new(label),
+                TextFont { font_size: 12.0, ..default() },
+                ThemedText
+            ),
+            (
+                slider(
+                    SliderProps { value, min, max },
+                    (),
+                ),
+                observe(on_offset_change::<T>(human_entity)),
+            ),
+        ],
+    )
+}
+
+/// Handler for offset slider changes
+fn on_offset_change<T: Component + Default + From<f32>>(
+    human_entity: Entity,
+) -> impl FnMut(On<ValueChange<f32>>, Commands) {
+    move |trigger: On<ValueChange<f32>>, mut commands: Commands| {
+        // Update human component
+        commands.entity(human_entity).insert(T::from(trigger.value));
+        // Update slider UI
+        commands.entity(trigger.source).insert(SliderValue(trigger.value));
+    }
 }
 
 /// Clothing section with list of current items and add button
