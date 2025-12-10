@@ -5,6 +5,7 @@ pub use common::*;
 use avian3d::prelude::*;
 use bevy::{
     app::AppExit,
+    ecs::query,
     feathers::{
         FeathersPlugin, controls::*, dark_theme::create_dark_theme,
         rounded_corners::RoundedCorners, theme::*, tokens,
@@ -15,7 +16,7 @@ use bevy::{
     ui_widgets::*,
 };
 use bevy_make_human::{prelude::*, ui::text_input::handle_text_input_focus};
-use bevy_ui_text_input::TextInputPlugin;
+use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputPlugin};
 use strum::IntoEnumIterator;
 /// Marker for the config panel
 #[derive(Component)]
@@ -32,49 +33,18 @@ fn main() -> AppExit {
         TextInputPlugin,
         CommonPlugin, // camera and egui editor
     ))
-    .insert_resource(UiTheme(create_dark_theme()));
-
-    app
-        // .init_collection::<DipAssets>() // testing dip generated animations
-        // .init_collection::<MixamoAssets>() // mixamo fbx animations
-        .add_systems(Startup, (setup, setup_ui))
-        .add_systems(
-            Update,
-            // stop camera movement when typing in text inputs
+    .insert_resource(UiTheme(create_dark_theme()))
+    .add_systems(Startup, (setup, setup_ui))
+    .add_systems(
+        Update,
+        // stop camera movement when typing in text inputs
+        (
             handle_text_input_focus::<CameraFree>
                 .run_if(resource_changed::<bevy::input_focus::InputFocus>),
-        )
-        .run()
-    // .add_systems(
-    //     Update,
-    //     (update_play_button_text)
-    //         .run_if(in_state(GameState::Ready)),
-    // )
-    // .add_systems(
-    //     Update,
-    //     (
-    //         // paint_joint_labels,
-    //         // setup_gltf_animations.run_if(in_state(GameState::Ready)),
-    //         // draw_joint_axes,
-    //         // update_config_panel,
-    //         // filter_clothing_options,
-    //         // filter_morph_options,
-    //         // filter_pose_options,
-    //         // load_pose_system,
-    //         // apply_pose_system,
-    //         // filter_dropdown_options::<SkinAsset>,
-    //         // filter_dropdown_options::<RigAsset>,
-    //         // filter_dropdown_options::<Option<HairAsset>>,
-    //         // filter_dropdown_options::<ProxyMesh>,
-    //         // filter_dropdown_options::<EyesAsset>,
-    //         // filter_dropdown_options::<EyeMaterialAsset>,
-    //         // filter_dropdown_options::<EyebrowsAsset>,
-    //         // filter_dropdown_options::<EyelashesAsset>,
-    //         // filter_dropdown_options::<TeethAsset>,
-    //         // filter_dropdown_options::<TongueAsset>,
-    //     ),
-    // )
-    // testing different animations systems
+            filter_options,
+        ),
+    )
+    .run()
 }
 
 fn setup(
@@ -216,7 +186,7 @@ fn setup_ui(mut commands: Commands) {
             flex_direction: FlexDirection::Column,
             row_gap: px(8.0),
             padding: UiRect::all(px(12.0)),
-            overflow: Overflow::visible(), // allow dropdown popups to escape
+            //overflow: Overflow::visible(), // allow dropdown popups to escape
             ..default()
         },
         ThemeBackgroundColor(tokens::WINDOW_BG),
@@ -369,8 +339,24 @@ pub struct DropdownClose {
     entity: Entity,
 }
 
+#[derive(EntityEvent)]
+pub struct DropdownFilter {
+    entity: Entity,
+    filter: String,
+}
+
+#[derive(Component)]
+pub struct Dropdown;
+
 #[derive(Component)]
 pub struct DropdownOpen;
+
+#[derive(Component)]
+pub struct DropdownFilterInput;
+
+#[derive(Component)]
+pub struct DropdownOptionsContainer;
+
 
 fn dropdown_mh<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
     human_entity: Entity,
@@ -382,6 +368,7 @@ fn dropdown_mh<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync +
         .unwrap_or_default();
 
     (
+        Dropdown,
         Name::new(format!("Dropdown{}", type_name)),
         Node {
             flex_direction: FlexDirection::Column,
@@ -450,6 +437,7 @@ fn dropdown_mh<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync +
                             ThemeBackgroundColor(tokens::BUTTON_BG),
                             children![
                                 (
+                                    DropdownFilterInput,
                                     text_input(
                                         TextInputProps {
                                             width: Val::Percent(100.0),
@@ -458,30 +446,32 @@ fn dropdown_mh<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync +
                                             corners: RoundedCorners::Top,
                                             ..default()
                                         },
-                                        ()
+                                        TextInputContents::default()
                                     ),
-                                    //observe(on_filter_option_click::<T>)
                                 ),
                                 (
+                                    Name::new("OptionsContainer"),
+                                    DropdownOptionsContainer,
                                     Node {
                                         flex_direction: FlexDirection::Column,
                                         ..default()
                                     },
                                     Children::spawn(SpawnIter(options.into_iter())),
                                 ),
-                                
                             ],
                             Hovered(false),
-                            observe(|trigger: On<Pointer<Out>>,
-                                     mut commands: Commands,
-                                     hover_query: Query<&Hovered>| {
-                                // Hovered includes descendants - only close if fully unhovered
-                                if let Ok(hovered) = hover_query.get(trigger.entity) {
-                                    if !hovered.0 {
-                                        commands.entity(trigger.entity).despawn();
+                            observe(
+                                |trigger: On<Pointer<Out>>,
+                                 mut commands: Commands,
+                                 hover_query: Query<&Hovered>| {
+                                    // Hovered includes descendants - only close if fully unhovered
+                                    if let Ok(hovered) = hover_query.get(trigger.entity) {
+                                        if !hovered.0 {
+                                            commands.entity(trigger.entity).despawn();
+                                        }
                                     }
-                                }
-                            })
+                                },
+                            ),
                         ));
                     }
                 ),
@@ -526,7 +516,64 @@ fn dropdown_mh<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync +
                 }
             },
         ),
+        observe(
+            move |trigger: On<DropdownFilter>,
+                  mut commands: Commands,
+                  children_query: Query<&Children>,
+                  dropdown_options_container: Query<Entity, With<DropdownOptionsContainer>>,
+
+                  mut query: Query<(&T, &mut Node)>| {
+                info!(
+                    "Filtering dropdown on {:?}, {}",
+                    trigger.entity, trigger.filter
+                );
+
+                for child in children_query.iter_descendants(trigger.entity) {
+                    if let Ok(container) = dropdown_options_container.get(child) {
+                        let children = children_query.get(container).unwrap();
+                        for c in children.iter() {
+                            if let Ok((value, mut node)) = query.get_mut(c) {
+                                info!("Option value: {}", value.to_string());
+
+                                let label = value.to_string().to_lowercase();
+                                let filter = trigger.filter.to_lowercase();
+                                let show = filter.is_empty() || label.contains(&filter);
+                                match show {
+                                    true => node.display = Display::Flex,
+                                    false => node.display = Display::None,
+                                }
+                                
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            },
+        ),
     )
+}
+
+/// Filter clothing options based on text input
+fn filter_options(
+    filter_query: Query<
+        (Entity, &TextInputContents),
+        (With<DropdownFilterInput>, Changed<TextInputContents>),
+    >,
+    parent_query: Query<&ChildOf>,
+    dropdown_query: Query<&Dropdown>,
+    mut commands: Commands,
+) {
+    for (e, text) in filter_query.iter() {        
+        for c in parent_query.iter_ancestors(e) {
+            if dropdown_query.contains(c) {
+                commands.trigger(DropdownFilter {
+                    entity: c,
+                    filter: text.get().to_string(),
+                });
+            }
+        }
+    }
 }
 
 // Body section
