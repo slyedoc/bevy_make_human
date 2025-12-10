@@ -17,8 +17,6 @@ pub mod prelude {
     #[cfg(feature = "feathers")]
     pub use crate::ui::{
         dropdown::{DropdownOption, dropdown},
-        filter_dropdown::dropdown_filter,
-        register_filter_dropdown,
         scroll::{ScrollProps, scroll},
         text_input::{TextInputProps, text_input},
     };
@@ -130,7 +128,6 @@ impl Plugin for MakeHumanPlugin {
             .register_type::<MHTag>()
             .register_type::<ClothingOffset>()
             .register_type::<FloorOffset>()
-            .register_type::<Skin>()
             .register_type::<Morph>();
     }
 }
@@ -224,7 +221,8 @@ fn dirty_check(
         Entity,
         Or<(
             Changed<Rig>,
-            Changed<Skin>,
+            Changed<SkinMesh>,
+            Changed<SkinMaterial>,
             Changed<Eyes>,
             Changed<Eyebrows>,
             Changed<Eyelashes>,
@@ -303,9 +301,9 @@ fn human_changed(
             // TODO: cancel existing task?
             .remove::<HumanProcessingTask>() // stop current builds,
             .insert(HumanAssets {
-                skin_obj_base: asset_server.load(h.skin.mesh.obj().to_string()),
-                skin_proxy: asset_server.load(h.skin.mesh.proxy().to_string()),
-                skin_material: asset_server.load(h.skin.material.mhmat().to_string()),
+                skin_obj_base: asset_server.load(h.skin_mesh.obj().to_string()),
+                skin_proxy: asset_server.load(h.skin_mesh.proxy().to_string()),
+                skin_material: asset_server.load(h.skin_material.mhmat().to_string()),
                 rig_bones: asset_server.load(h.rig.rig_json_path().to_string()),
                 rig_weights: asset_server.load(h.rig.weights().to_string()),
                 clothing_offset: h.clothing_offset.0,

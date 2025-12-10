@@ -201,6 +201,7 @@ fn on_trigger_click(
     mut dropdown_query: Query<&mut Dropdown>,
     child_of_query: Query<&ChildOf>,
 ) {
+
     // Find parent dropdown - may need to walk up hierarchy if Click bubbled from child
     let mut current = trigger.entity;
 

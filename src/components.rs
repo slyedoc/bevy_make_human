@@ -7,7 +7,8 @@ pub struct HumanQuery {
     pub entity: Entity,
     pub name: Option<&'static Name>,
     pub rig: &'static Rig,
-    pub skin: &'static Skin,
+    pub skin_mesh: &'static SkinMesh,
+    pub skin_material: &'static SkinMaterial,
     pub eyes: &'static Eyes,
     pub eyebrows: &'static Eyebrows,
     pub eyelashes: &'static Eyelashes,
@@ -26,7 +27,8 @@ pub struct HumanQuery {
 #[derive(Component, Default)]
 #[require(
     Rig,
-    Skin,
+    SkinMesh,
+    SkinMaterial,
     Eyes,
     Eyebrows,
     Eyelashes,
@@ -45,22 +47,6 @@ pub struct Human;
 // marker comonent to track if human needs to be rebuilt
 #[derive(Component, Clone, Reflect, Default)]
 pub struct HumanDirty;
-
-
-#[derive(Component, Clone, Reflect)]
-pub struct Skin {
-    pub mesh: SkinMesh,
-    pub material: SkinMaterial,
-}
-
-impl Default for Skin {
-    fn default() -> Self {
-        Self {
-            mesh: SkinMesh::FemaleGeneric,
-            material: SkinMaterial::YoungCaucasianFemale,
-        }
-    }
-}
 
 // === PARTS ===
 // Eyes, Eyebrows, Eyelashes, Teeth, Tongue, Hair are generated in build.rs with Component derive

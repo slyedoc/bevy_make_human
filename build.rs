@@ -8,7 +8,7 @@ use std::collections::HashMap;
 const COMMON_ITEMS: [&str; 4] = ["mhclo", "mhmat", "obj", "thumb"];
 
 // Parts that derive Component directly (used as components without wrappers)
-const COMPONENT_ENUMS: &[&str] = &["Hair", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Eyes"];
+const COMPONENT_ENUMS: &[&str] = &["Hair", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Eyes", "SkinMesh", "SkinMaterial"];
 
 fn main() -> io::Result<()> {
     

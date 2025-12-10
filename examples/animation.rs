@@ -57,10 +57,8 @@ fn setup(
         Name::new("Bob"),
         Human,
         Rig::Mixamo,
-        Skin {
-            mesh: SkinMesh::MaleGeneric,
-            material: SkinMaterial::YoungCaucasianMale,
-        },
+        SkinMesh::MaleGeneric,
+        SkinMaterial::YoungCaucasianMale,
         Eyes::LowPolyBluegreen,
         //Hair::Bob02,
         Eyebrows::Eyebrow006,
