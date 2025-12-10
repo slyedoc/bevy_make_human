@@ -184,6 +184,7 @@ pub fn scroll<C: Bundle, B: Bundle>(
                             Name::new("Scrollbar Thumb"),
                             Node {
                                 width: Val::Percent(100.0),
+                                height: Val::Px(SCROLLBAR_MIN_THUMB_SIZE), // initial size, system will update
                                 position_type: PositionType::Absolute,
                                 ..Default::default()
                             },

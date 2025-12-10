@@ -6,7 +6,7 @@ use avian3d::prelude::*;
 use bevy::{
     app::AppExit,
     feathers::{
-        FeathersPlugin, controls::*, dark_theme::create_dark_theme,
+        FeathersPlugins, controls::*, dark_theme::create_dark_theme,
         rounded_corners::RoundedCorners, theme::*, tokens,
     },
     picking::{hover::Hovered, mesh_picking::MeshPickingPlugin},
@@ -25,7 +25,7 @@ fn main() -> AppExit {
     let mut app = App::new();
     app.add_plugins((
         DefaultPlugins,
-        FeathersPlugin,
+        FeathersPlugins,
         MeshPickingPlugin,
         PhysicsPlugins::default(),
         MakeHumanPlugin::default(),
@@ -553,8 +553,8 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
                 DropdownFilterInput,
                 text_input(
                     TextInputProps {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(32.0),
+                        width: Val::Percent(100.0),                        
+                        height: Val::Px(24.0),
                         placeholder: "Filter...".to_string(),
                         corners: RoundedCorners::Top,
                         ..default()
@@ -645,7 +645,7 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
                 text_input(
                     TextInputProps {
                         width: Val::Percent(100.0),
-                        height: Val::Px(32.0),
+                        height: Val::Px(24.0),
                         placeholder: "Filter...".to_string(),
                         corners: RoundedCorners::Top,
                         ..default()
@@ -675,7 +675,7 @@ fn on_hover_exit(trigger: On<Pointer<Out>>, mut commands: Commands, hover_query:
 }
 
 /// Filter options based on text input
-fn filter_options(
+fn filter_text_changed(
     filter_query: Query<
         (Entity, &TextInputContents),
         (With<DropdownFilterInput>, Changed<TextInputContents>),
