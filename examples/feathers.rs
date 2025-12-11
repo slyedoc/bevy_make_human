@@ -42,6 +42,7 @@ fn main() -> AppExit {
                 .run_if(resource_changed::<bevy::input_focus::InputFocus>),
             filter_text_changed::<DropdownFilterInput, Dropdown>,
             filter_text_changed::<ClothingFilterInput, ClothingSection>,
+            filter_text_changed::<MorphFilterInput, MorphsSection>,
         ),
     )
     .run()
@@ -183,11 +184,9 @@ fn setup_ui(mut commands: Commands) {
             width: px(400.0),
             top: px(20.0),
             left: px(20.0),
-            max_height: percent(80.0),
+            bottom: px(20.0),
             flex_direction: FlexDirection::Column,
-            row_gap: px(8.0),
-            padding: UiRect::all(px(12.0)),
-            //overflow: Overflow::visible(), // allow dropdown popups to escape
+            padding: UiRect::all(px(2.0)),
             ..default()
         },
         ThemeBackgroundColor(tokens::WINDOW_BG),
@@ -273,13 +272,50 @@ fn on_human_click(
         (),
         children![
             (
-                Text::new(format!(
-                    "Name: {}",
-                    h.name
-                        .map_or_else(|| "Unnamed".to_string(), |n| n.to_string())
-                )),
-                ThemedText,
-                TextFont::from_font_size(14.0),
+                Name::new("HeaderRow"),
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                children![
+                    (
+                        Text::new(format!(
+                            "Name: {}",
+                            h.name
+                                .map_or_else(|| "Unnamed".to_string(), |n| n.to_string())
+                        )),
+                        ThemedText,
+                        TextFont::from_font_size(14.0),
+                    ),
+                    (
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(4.0),
+                            ..default()
+                        },
+                        children![
+                            (
+                                button(
+                                    ButtonProps::default(),
+                                    (),
+                                    Spawn((Text::new("-"), ThemedText)),
+                                ),
+                                observe(collapse_all),
+                            ),
+                            (
+                                button(
+                                    ButtonProps::default(),
+                                    (),
+                                    Spawn((Text::new("+"), ThemedText)),
+                                ),
+                                observe(expand_all),
+                            ),
+                        ],
+                    ),
+                ],
             ),
             collapsible("General", true, children![
                 dropdown_mh::<Rig>(e, *h.rig),
@@ -299,6 +335,9 @@ fn on_human_click(
                 clothing_section(e, &h.clothing),
                 offset_slider::<ClothingOffset>(e, "Clothing", h.clothing_offset.0, 0.0, 0.01),
             ]),
+            collapsible("Morphs", false, children![
+                morphs_section(e, &h.morphs),
+            ]),
         ],
     ));
 }
@@ -311,29 +350,23 @@ fn collapsible<C: Bundle>(title: &'static str, expanded: bool, content: C) -> im
         Node {
             flex_direction: FlexDirection::Column,
             width: Val::Percent(100.0),
-            align_items: AlignItems::Start,            
             padding: UiRect::top(Val::Px(4.0)),
             ..default()
         },
         children![
             (
                 Name::new("CollapsibleHeader"),
-                Node {
-                    width: Val::Percent(100.0),
-                    ..default()
-                },
-                children![(
-                    button(
-                        ButtonProps::default(),
-                        (),
-                        Spawn((
-                            Text::new(format!("{} {}", if expanded { "▼" } else { "▶" }, title)),
-                            ThemedText,
-                            TextFont { font_size: 12.0, ..default() },
-                        )),
-                    ),
-                    observe(on_collapsible_toggle),
-                )],
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((
+                        Node { width: Val::Percent(100.0), ..default() },
+                        Text::new(format!("{} {}", if expanded { "v" } else { ">" }, title)),
+                        ThemedText,
+                        TextFont { font_size: 12.0, ..default() },
+                    )),
+                ),
+                observe(on_collapsible_toggle),
             ),
             (
                 Name::new("CollapsibleContent"),
@@ -359,10 +392,63 @@ struct Collapsible;
 #[derive(Component)]
 struct CollapsibleContent;
 
+/// Collapse all collapsible sections
+fn collapse_all(
+    _trigger: On<Pointer<Click>>,
+    mut content_query: Query<&mut Node, With<CollapsibleContent>>,
+    mut text_query: Query<&mut Text>,
+    collapsible_query: Query<&Children, With<Collapsible>>,
+    children_query: Query<&Children>,
+) {
+    for mut node in content_query.iter_mut() {
+        node.display = Display::None;
+    }
+    // Update all header arrows
+    for children in collapsible_query.iter() {
+        for child in children.iter() {
+            for desc in children_query.iter_descendants(child) {
+                if let Ok(mut text) = text_query.get_mut(desc) {
+                    if text.0.starts_with("v") {
+                        text.0 = text.0.replacen("v", ">", 1);
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+    }
+}
+
+/// Expand all collapsible sections
+fn expand_all(
+    _trigger: On<Pointer<Click>>,
+    mut content_query: Query<&mut Node, With<CollapsibleContent>>,
+    mut text_query: Query<&mut Text>,
+    collapsible_query: Query<&Children, With<Collapsible>>,
+    children_query: Query<&Children>,
+) {
+    for mut node in content_query.iter_mut() {
+        node.display = Display::Flex;
+    }
+    // Update all header arrows
+    for children in collapsible_query.iter() {
+        for child in children.iter() {
+            for desc in children_query.iter_descendants(child) {
+                if let Ok(mut text) = text_query.get_mut(desc) {
+                    if text.0.starts_with(">") {
+                        text.0 = text.0.replacen(">", "v", 1);
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+    }
+}
+
 /// Toggle collapsible on header click
 fn on_collapsible_toggle(
     trigger: On<Pointer<Click>>,
-    mut commands: Commands,
     parent_query: Query<&ChildOf>,
     collapsible_query: Query<&Collapsible>,
     children_query: Query<&Children>,
@@ -387,10 +473,10 @@ fn on_collapsible_toggle(
             for desc in children_query.iter_descendants(trigger.entity) {
                 if let Ok(mut text) = text_query.get_mut(desc) {
                     let current = text.0.clone();
-                    if current.starts_with("▼") {
-                        text.0 = current.replacen("▼", "▶", 1);
-                    } else if current.starts_with("▶") {
-                        text.0 = current.replacen("▶", "▼", 1);
+                    if current.starts_with("v") {
+                        text.0 = current.replacen("v", ">", 1);
+                    } else if current.starts_with(">") {
+                        text.0 = current.replacen(">", "v", 1);
                     }
                     break;
                 }
@@ -828,6 +914,514 @@ fn on_clothing_option_click(
         }
     }
 }
+
+// ==================== MORPHS SECTION ====================
+
+/// Morphs section with list of morphs and add button
+fn morphs_section(human_entity: Entity, morphs: &Morphs) -> impl Bundle {
+    let items: Vec<_> = morphs
+        .iter()
+        .enumerate()
+        .map(|(idx, morph)| morph_item_row(human_entity, idx, morph))
+        .collect();
+
+    (
+        Name::new("MorphsSection"),
+        MorphsSection,
+        Node {
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::top(Val::Px(8.0)),
+            ..default()
+        },
+        children![
+            (
+                Text::new("Morphs"),
+                TextFont { font_size: 12.0, ..default() },
+                ThemedText
+            ),
+            (
+                Name::new("MorphsList"),
+                MorphsList,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(4.0),
+                    padding: UiRect::bottom(Val::Px(4.0)),
+                    ..default()
+                },
+                Children::spawn(SpawnIter(items.into_iter())),
+            ),
+            (
+                Name::new("AddMorphButton"),
+                MorphAddButton,
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((Text::new("+ Add Morph"), ThemedText)),
+                ),
+                observe(on_open_morph_menu(human_entity)),
+            ),
+        ],
+        observe(on_morph_select(human_entity)),
+        observe(on_morph_remove(human_entity)),
+        observe(on_morph_value_change(human_entity)),
+        observe(on_morph_close),
+        observe(on_morph_filter),
+    )
+}
+
+#[derive(Component)]
+struct MorphsSection;
+
+#[derive(Component)]
+struct MorphsList;
+
+#[derive(Component)]
+struct MorphAddButton;
+
+#[derive(EntityEvent)]
+struct MorphSelect {
+    entity: Entity,
+    target: MorphTarget,
+}
+
+#[derive(EntityEvent)]
+struct MorphRemove {
+    entity: Entity,
+    idx: usize,
+}
+
+#[derive(EntityEvent)]
+struct MorphValueChange {
+    entity: Entity,
+    idx: usize,
+    value: f32,
+}
+
+#[derive(EntityEvent)]
+struct MorphClose {
+    entity: Entity,
+}
+
+
+/// Single morph row with label, slider, and remove button
+fn morph_item_row(_human_entity: Entity, idx: usize, morph: &Morph) -> impl Bundle {
+    let (min, max) = morph.target.value_range();
+    let label = format!("{:?}", morph.target);
+
+    (
+        Name::new(format!("MorphItem_{}", idx)),
+        MorphItem(idx),
+        Node {
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: Val::Px(4.0),
+            width: Val::Percent(100.0),
+            ..default()
+        },
+        children![
+            (
+                Text::new(label),
+                TextFont { font_size: 10.0, ..default() },
+                ThemedText,
+                Node {
+                    width: Val::Px(120.0),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
+            ),
+            (
+                Node { flex_grow: 1.0, ..default() },
+                children![(
+                    slider(
+                        SliderProps { value: morph.value, min, max },
+                        (),
+                    ),
+                    observe(on_morph_slider_change),
+                )],
+            ),
+            (
+                Node {
+                    width: Val::Px(24.0),
+                    height: Val::Px(24.0),
+                    ..default()
+                },
+                children![(
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((Text::new("×"), ThemedText)),
+                    ),
+                    observe(on_morph_item_remove_click),
+                )],
+            ),
+        ],
+    )
+}
+
+#[derive(Component)]
+struct MorphItem(usize);
+
+#[derive(Component)]
+struct MorphMenu;
+
+#[derive(Component)]
+struct MorphOption(MorphTarget);
+
+#[derive(Component)]
+struct MorphFilterInput;
+
+#[derive(Component)]
+struct MorphOptionsContainer;
+
+/// Slider change handler for morph items
+fn on_morph_slider_change(
+    trigger: On<ValueChange<f32>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    item_query: Query<&MorphItem>,
+    section_query: Query<&MorphsSection>,
+) {
+    // Update slider UI
+    commands.entity(trigger.source).insert(SliderValue(trigger.value));
+
+    // Find MorphItem parent to get index
+    for ancestor in parent_query.iter_ancestors(trigger.source) {
+        if let Ok(item) = item_query.get(ancestor) {
+            // Find MorphsSection ancestor to trigger event
+            for section_ancestor in parent_query.iter_ancestors(ancestor) {
+                if section_query.get(section_ancestor).is_ok() {
+                    commands.trigger(MorphValueChange {
+                        entity: section_ancestor,
+                        idx: item.0,
+                        value: trigger.value,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+}
+
+/// Handler for morph value change
+fn on_morph_value_change(
+    human_entity: Entity,
+) -> impl FnMut(On<MorphValueChange>, Commands, Query<&mut Morphs>) {
+    move |trigger: On<MorphValueChange>,
+          mut commands: Commands,
+          mut morphs_query: Query<&mut Morphs>| {
+        if let Ok(mut morphs) = morphs_query.get_mut(human_entity) {
+            if trigger.idx < morphs.len() {
+                morphs[trigger.idx].value = trigger.value;
+                commands.entity(human_entity).insert(HumanDirty);
+            }
+        }
+    }
+}
+
+/// Click handler for remove button
+fn on_morph_item_remove_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    item_query: Query<&MorphItem>,
+    section_query: Query<&MorphsSection>,
+) {
+    for ancestor in parent_query.iter_ancestors(trigger.entity) {
+        if let Ok(item) = item_query.get(ancestor) {
+            for section_ancestor in parent_query.iter_ancestors(ancestor) {
+                if section_query.get(section_ancestor).is_ok() {
+                    commands.trigger(MorphRemove {
+                        entity: section_ancestor,
+                        idx: item.0,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+}
+
+/// Handler for MorphRemove event
+fn on_morph_remove(
+    human_entity: Entity,
+) -> impl FnMut(On<MorphRemove>, Commands, Query<&mut Morphs>, Query<&Children>, Query<Entity, With<MorphsList>>) {
+    move |trigger: On<MorphRemove>,
+          mut commands: Commands,
+          mut morphs_query: Query<&mut Morphs>,
+          children_query: Query<&Children>,
+          list_query: Query<Entity, With<MorphsList>>| {
+        if let Ok(mut morphs) = morphs_query.get_mut(human_entity) {
+            if trigger.idx < morphs.len() {
+                morphs.remove(trigger.idx);
+                commands.entity(human_entity).insert(HumanDirty);
+
+                // Rebuild UI
+                for child in children_query.iter_descendants(trigger.entity) {
+                    if let Ok(list_entity) = list_query.get(child) {
+                        commands.entity(list_entity).despawn_children();
+                        for (idx, morph) in morphs.iter().enumerate() {
+                            commands.entity(list_entity).with_child(
+                                morph_item_row(human_entity, idx, morph)
+                            );
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Handler for MorphSelect event
+fn on_morph_select(
+    human_entity: Entity,
+) -> impl FnMut(On<MorphSelect>, Commands, Query<&mut Morphs>, Query<&Children>, Query<Entity, With<MorphsList>>) {
+    move |trigger: On<MorphSelect>,
+          mut commands: Commands,
+          mut morphs_query: Query<&mut Morphs>,
+          children_query: Query<&Children>,
+          list_query: Query<Entity, With<MorphsList>>| {
+        // Close menu
+        commands.trigger(MorphClose {
+            entity: trigger.entity,
+        });
+
+        if let Ok(mut morphs) = morphs_query.get_mut(human_entity) {
+            // Check if already has this morph
+            if !morphs.iter().any(|m| m.target == trigger.target) {
+                let new_morph = Morph::new(trigger.target, 0.0);
+                morphs.push(new_morph.clone());
+                commands.entity(human_entity).insert(HumanDirty);
+
+                // Add to UI
+                for child in children_query.iter_descendants(trigger.entity) {
+                    if let Ok(list_entity) = list_query.get(child) {
+                        let idx = morphs.len() - 1;
+                        commands.entity(list_entity).with_child(
+                            morph_item_row(human_entity, idx, &new_morph)
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Handler for MorphClose event
+fn on_morph_close(
+    trigger: On<MorphClose>,
+    mut commands: Commands,
+    children_query: Query<&Children>,
+    menu_query: Query<&MorphMenu>,
+) {
+    for child in children_query.iter_descendants(trigger.entity) {
+        if menu_query.get(child).is_ok() {
+            commands.entity(child).despawn();
+        }
+    }
+}
+
+/// Handler for morph filter event
+fn on_morph_filter(
+    trigger: On<FilterOptions>,
+    children_query: Query<&Children>,
+    options_container: Query<Entity, With<MorphOptionsContainer>>,
+    mut query: Query<(&MorphOption, &mut Node)>,
+) {
+    for child in children_query.iter_descendants(trigger.entity) {
+        if let Ok(container) = options_container.get(child) {
+            for c in children_query.iter_descendants(container) {
+                if let Ok((option, mut node)) = query.get_mut(c) {
+                    let label = format!("{:?}", option.0).to_lowercase();
+                    let filter = trigger.filter.to_lowercase();
+                    let show = filter.is_empty() || label.contains(&filter);
+                    node.display = if show { Display::Flex } else { Display::None };
+                }
+            }
+            break;
+        }
+    }
+}
+
+/// Open morph menu with all categories
+fn on_open_morph_menu(
+    human_entity: Entity,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&Children>, Query<&MorphMenu>, Query<&ChildOf>, Query<&MorphsSection>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          children_query: Query<&Children>,
+          menu_query: Query<&MorphMenu>,
+          parent_query: Query<&ChildOf>,
+          section_query: Query<&MorphsSection>| {
+        // Find MorphsSection ancestor
+        let section_entity = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|e| section_query.get(*e).is_ok())
+            .unwrap_or(trigger.entity);
+
+        // Check if menu already open
+        for child in children_query.iter_descendants(section_entity) {
+            if menu_query.get(child).is_ok() {
+                return;
+            }
+        }
+
+        // Build morph options from all categories
+        let mut options: Vec<_> = Vec::new();
+
+        // Add all morph targets from each category
+        for arms in ArmsMorph::iter() {
+            options.push(MorphTarget::Arms(arms));
+        }
+        for breast in BreastMorph::iter() {
+            options.push(MorphTarget::Breast(breast));
+        }
+        for buttocks in ButtocksMorph::iter() {
+            options.push(MorphTarget::Buttocks(buttocks));
+        }
+        for cheek in CheekMorph::iter() {
+            options.push(MorphTarget::Cheek(cheek));
+        }
+        for chin in ChinMorph::iter() {
+            options.push(MorphTarget::Chin(chin));
+        }
+        for ears in EarsMorph::iter() {
+            options.push(MorphTarget::Ears(ears));
+        }
+        for eyebrows in EyebrowsMorph::iter() {
+            options.push(MorphTarget::Eyebrows(eyebrows));
+        }
+        for eyes in EyesMorph::iter() {
+            options.push(MorphTarget::Eyes(eyes));
+        }
+        for feet in FeetMorph::iter() {
+            options.push(MorphTarget::Feet(feet));
+        }
+        for forehead in ForeheadMorph::iter() {
+            options.push(MorphTarget::Forehead(forehead));
+        }
+        for genitals in GenitalsMorph::iter() {
+            options.push(MorphTarget::Genitals(genitals));
+        }
+        for hands in HandsMorph::iter() {
+            options.push(MorphTarget::Hands(hands));
+        }
+        for head in HeadMorph::iter() {
+            options.push(MorphTarget::Head(head));
+        }
+        for hip in HipMorph::iter() {
+            options.push(MorphTarget::Hip(hip));
+        }
+        for legs in LegsMorph::iter() {
+            options.push(MorphTarget::Legs(legs));
+        }
+        for mouth in MouthMorph::iter() {
+            options.push(MorphTarget::Mouth(mouth));
+        }
+        for neck in NeckMorph::iter() {
+            options.push(MorphTarget::Neck(neck));
+        }
+        for nose in NoseMorph::iter() {
+            options.push(MorphTarget::Nose(nose));
+        }
+        for pelvis in PelvisMorph::iter() {
+            options.push(MorphTarget::Pelvis(pelvis));
+        }
+        for stomach in StomachMorph::iter() {
+            options.push(MorphTarget::Stomach(stomach));
+        }
+        for torso in TorsoMorph::iter() {
+            options.push(MorphTarget::Torso(torso));
+        }
+
+        let option_bundles: Vec<_> = options
+            .into_iter()
+            .map(|target| {
+                let label = format!("{:?}", target);
+                (
+                    Name::new(label.clone()),
+                    MorphOption(target),
+                    Node {
+                        width: Val::Percent(100.0),
+                        align_items: AlignItems::Center,
+                        min_height: Val::Px(24.0),
+                        ..default()
+                    },
+                    children![(
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((
+                                Text::new(label),
+                                ThemedText,
+                                TextFont { font_size: 10.0, ..default() },
+                            )),
+                        ),
+                        observe(on_morph_option_click(human_entity, target)),
+                    )],
+                )
+            })
+            .collect();
+
+        commands.entity(section_entity).with_child((
+            MorphMenu,
+            Name::new("MorphMenu"),
+            Node {
+                flex_direction: FlexDirection::Column,
+                width: Val::Percent(100.0),
+                ..default()
+            },
+            ThemeBackgroundColor(tokens::WINDOW_BG),
+            ZIndex(10),
+            children![
+                (
+                    MorphFilterInput,
+                    text_input(
+                        TextInputProps {
+                            width: Val::Percent(100.0),
+                            height: Val::Px(24.0),
+                            placeholder: "Filter...".to_string(),
+                            corners: RoundedCorners::Top,
+                            ..default()
+                        },
+                        TextInputContents::default(),
+                    ),
+                ),
+                scroll(
+                    ScrollProps::vertical(px(300.0)),
+                    (MorphOptionsContainer, Name::new("MorphOptions")),
+                    Children::spawn(SpawnIter(option_bundles.into_iter())),
+                ),
+            ],
+            Hovered(false),
+            observe(on_hover_exit),
+        ));
+    }
+}
+
+/// Click handler for morph option
+fn on_morph_option_click(
+    _human_entity: Entity,
+    target: MorphTarget,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&ChildOf>, Query<&MorphsSection>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          parent_query: Query<&ChildOf>,
+          section_query: Query<&MorphsSection>| {
+        if let Some(section) = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|e| section_query.get(*e).is_ok())
+        {
+            commands.trigger(MorphSelect {
+                entity: section,
+                target,
+            });
+        }
+    }
+}
+
+// ==================== END MORPHS SECTION ====================
 
 /// Event for selecting an option from the dropdown
 #[derive(EntityEvent)]
