@@ -16,10 +16,8 @@ pub struct HumanQuery {
     pub tongue: &'static Tongue,
     pub hair: &'static Hair,
     pub morphs: &'static Morphs,
-    pub phenotype: &'static Phenotype,
     pub clothing: &'static Clothing,
     pub floor_offset: &'static FloorOffset,
-    pub height_offset: &'static ClothingOffset,
     pub clothing_offset: &'static ClothingOffset,
 }
 
@@ -36,7 +34,6 @@ pub struct HumanQuery {
     ClothingOffset,
     FloorOffset,
     Morphs,
-    Phenotype,
     HumanDirty, // will trigger a rebuild when spawned
     // bevy
     Transform,

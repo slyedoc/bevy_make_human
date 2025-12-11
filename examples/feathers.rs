@@ -95,14 +95,9 @@ fn setup(
                 ClothingAsset::ToigoMaleSuit3,
                 ClothingAsset::ToigoAnkleBootsMale,
             ]),
-            Phenotype {
-                race: Race::Caucasian,
-                gender: 1.0,
-                age: 0.5,
-                muscle: 0.3,
-                weight: 0.4,
-                ..default()
-            },
+            Morphs(vec![
+                Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
+            ]),
             Transform::from_xyz(-1.0, 0.0, 0.0),
         ))
         .observe(on_human_click);
@@ -122,16 +117,10 @@ fn setup(
             Tongue::Tongue01,
             Clothing(vec![
                 ClothingAsset::ElvsGoddessDress8,
-                //ClothingAsset::ToigoAnkleBootsMale,
             ]),
-            Phenotype {
-                race: Race::Caucasian,
-                gender: 0.0,
-                age: 0.5,
-                muscle: 0.3,
-                weight: 0.4,
-                ..default()
-            },
+            Morphs(vec![
+                Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),
+            ]),
             Transform::from_xyz(1.0, 0.0, 0.0),
         ))
         .observe(on_human_click);
@@ -775,6 +764,21 @@ fn on_clothing_close(
     }
 }
 
+/// Close button click for clothing menu
+fn on_close_clothing_menu_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    section_query: Query<&ClothingSection>,
+) {
+    if let Some(section) = parent_query
+        .iter_ancestors(trigger.entity)
+        .find(|e| section_query.get(*e).is_ok())
+    {
+        commands.trigger(ClothingClose { entity: section });
+    }
+}
+
 /// Handler for ClothingFilter event
 fn on_clothing_filter(
     trigger: On<FilterOptions>,
@@ -801,14 +805,15 @@ fn on_clothing_filter(
 /// Handler for opening clothing menu
 fn on_open_clothing_menu(
     human_entity: Entity,
-) -> impl FnMut(On<Pointer<Click>>, Commands, Res<AssetServer>, Query<&Children>, Query<&ClothingMenu>, Query<&ChildOf>, Query<&ClothingSection>) {
+) -> impl FnMut(On<Pointer<Click>>, Commands, Res<AssetServer>, Query<&Children>, Query<&ClothingMenu>, Query<&ChildOf>, Query<&ClothingSection>, Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>) {
     move |trigger: On<Pointer<Click>>,
           mut commands: Commands,
           asset_server: Res<AssetServer>,
           children_query: Query<&Children>,
           menu_query: Query<&ClothingMenu>,
           parent_query: Query<&ChildOf>,
-          section_query: Query<&ClothingSection>| {
+          section_query: Query<&ClothingSection>,
+          all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>| {
         // Find ClothingSection ancestor
         let section_entity = parent_query
             .iter_ancestors(trigger.entity)
@@ -820,6 +825,11 @@ fn on_open_clothing_menu(
             if menu_query.get(child).is_ok() {
                 return;
             }
+        }
+
+        // close all other open menus
+        for menu in all_menus.iter() {
+            commands.entity(menu).despawn();
         }
 
         let options: Vec<_> = ClothingAsset::iter()
@@ -869,17 +879,34 @@ fn on_open_clothing_menu(
             ZIndex(10),
             children![
                 (
-                    ClothingFilterInput,
-                    text_input(
-                        TextInputProps {
-                            width: Val::Percent(100.0),
-                            height: Val::Px(24.0),
-                            placeholder: "Filter...".to_string(),
-                            corners: RoundedCorners::Top,
-                            ..default()
-                        },
-                        TextInputContents::default(),
-                    ),
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        width: Val::Percent(100.0),
+                        ..default()
+                    },
+                    children![
+                        (
+                            ClothingFilterInput,
+                            text_input(
+                                TextInputProps {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Px(24.0),
+                                    placeholder: "Filter...".to_string(),
+                                    corners: RoundedCorners::Top,
+                                    ..default()
+                                },
+                                TextInputContents::default(),
+                            ),
+                        ),
+                        (
+                            button(
+                                ButtonProps::default(),
+                                (),
+                                Spawn((Text::new("×"), ThemedText)),
+                            ),
+                            observe(on_close_clothing_menu_click),
+                        ),
+                    ],
                 ),
                 scroll(
                     ScrollProps::vertical(px(300.0)),
@@ -1222,6 +1249,21 @@ fn on_morph_close(
     }
 }
 
+/// Close button click for morph menu
+fn on_close_morph_menu_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    section_query: Query<&MorphsSection>,
+) {
+    if let Some(section) = parent_query
+        .iter_ancestors(trigger.entity)
+        .find(|e| section_query.get(*e).is_ok())
+    {
+        commands.trigger(MorphClose { entity: section });
+    }
+}
+
 /// Handler for morph filter event
 fn on_morph_filter(
     trigger: On<FilterOptions>,
@@ -1247,13 +1289,14 @@ fn on_morph_filter(
 /// Open morph menu with all categories
 fn on_open_morph_menu(
     human_entity: Entity,
-) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&Children>, Query<&MorphMenu>, Query<&ChildOf>, Query<&MorphsSection>) {
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&Children>, Query<&MorphMenu>, Query<&ChildOf>, Query<&MorphsSection>, Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>) {
     move |trigger: On<Pointer<Click>>,
           mut commands: Commands,
           children_query: Query<&Children>,
           menu_query: Query<&MorphMenu>,
           parent_query: Query<&ChildOf>,
-          section_query: Query<&MorphsSection>| {
+          section_query: Query<&MorphsSection>,
+          all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>| {
         // Find MorphsSection ancestor
         let section_entity = parent_query
             .iter_ancestors(trigger.entity)
@@ -1267,73 +1310,13 @@ fn on_open_morph_menu(
             }
         }
 
-        // Build morph options from all categories
-        let mut options: Vec<_> = Vec::new();
+        // close all other open menus
+        for menu in all_menus.iter() {
+            commands.entity(menu).despawn();
+        }
 
-        // Add all morph targets from each category
-        for arms in ArmsMorph::iter() {
-            options.push(MorphTarget::Arms(arms));
-        }
-        for breast in BreastMorph::iter() {
-            options.push(MorphTarget::Breast(breast));
-        }
-        for buttocks in ButtocksMorph::iter() {
-            options.push(MorphTarget::Buttocks(buttocks));
-        }
-        for cheek in CheekMorph::iter() {
-            options.push(MorphTarget::Cheek(cheek));
-        }
-        for chin in ChinMorph::iter() {
-            options.push(MorphTarget::Chin(chin));
-        }
-        for ears in EarsMorph::iter() {
-            options.push(MorphTarget::Ears(ears));
-        }
-        for eyebrows in EyebrowsMorph::iter() {
-            options.push(MorphTarget::Eyebrows(eyebrows));
-        }
-        for eyes in EyesMorph::iter() {
-            options.push(MorphTarget::Eyes(eyes));
-        }
-        for feet in FeetMorph::iter() {
-            options.push(MorphTarget::Feet(feet));
-        }
-        for forehead in ForeheadMorph::iter() {
-            options.push(MorphTarget::Forehead(forehead));
-        }
-        for genitals in GenitalsMorph::iter() {
-            options.push(MorphTarget::Genitals(genitals));
-        }
-        for hands in HandsMorph::iter() {
-            options.push(MorphTarget::Hands(hands));
-        }
-        for head in HeadMorph::iter() {
-            options.push(MorphTarget::Head(head));
-        }
-        for hip in HipMorph::iter() {
-            options.push(MorphTarget::Hip(hip));
-        }
-        for legs in LegsMorph::iter() {
-            options.push(MorphTarget::Legs(legs));
-        }
-        for mouth in MouthMorph::iter() {
-            options.push(MorphTarget::Mouth(mouth));
-        }
-        for neck in NeckMorph::iter() {
-            options.push(MorphTarget::Neck(neck));
-        }
-        for nose in NoseMorph::iter() {
-            options.push(MorphTarget::Nose(nose));
-        }
-        for pelvis in PelvisMorph::iter() {
-            options.push(MorphTarget::Pelvis(pelvis));
-        }
-        for stomach in StomachMorph::iter() {
-            options.push(MorphTarget::Stomach(stomach));
-        }
-        for torso in TorsoMorph::iter() {
-            options.push(MorphTarget::Torso(torso));
-        }
+        // Build morph options from all categories (use MorphTarget::iter() which includes Macro)
+        let options: Vec<_> = MorphTarget::iter().collect();
 
         let option_bundles: Vec<_> = options
             .into_iter()
@@ -1376,17 +1359,34 @@ fn on_open_morph_menu(
             ZIndex(10),
             children![
                 (
-                    MorphFilterInput,
-                    text_input(
-                        TextInputProps {
-                            width: Val::Percent(100.0),
-                            height: Val::Px(24.0),
-                            placeholder: "Filter...".to_string(),
-                            corners: RoundedCorners::Top,
-                            ..default()
-                        },
-                        TextInputContents::default(),
-                    ),
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        width: Val::Percent(100.0),
+                        ..default()
+                    },
+                    children![
+                        (
+                            MorphFilterInput,
+                            text_input(
+                                TextInputProps {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Px(24.0),
+                                    placeholder: "Filter...".to_string(),
+                                    corners: RoundedCorners::Top,
+                                    ..default()
+                                },
+                                TextInputContents::default(),
+                            ),
+                        ),
+                        (
+                            button(
+                                ButtonProps::default(),
+                                (),
+                                Spawn((Text::new("×"), ThemedText)),
+                            ),
+                            observe(on_close_morph_menu_click),
+                        ),
+                    ],
                 ),
                 scroll(
                     ScrollProps::vertical(px(300.0)),
@@ -1608,6 +1608,21 @@ fn on_dropdown_close(
     }
 }
 
+/// Close button click for dropdown
+fn on_close_dropdown_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    dropdown_query: Query<&Dropdown>,
+) {
+    if let Some(dropdown) = parent_query
+        .iter_ancestors(trigger.entity)
+        .find(|e| dropdown_query.get(*e).is_ok())
+    {
+        commands.trigger(DropdownClose { entity: dropdown });
+    }
+}
+
 fn on_dropdown_filter<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
     trigger: On<FilterOptions>,
     children_query: Query<&Children>,
@@ -1635,6 +1650,7 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
     dropdown_open: Query<&DropdownMenu>,
     parent_query: Query<&ChildOf>,
     mut commands: Commands,
+    all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>,
 ) {
     let child_of = parent_query.get(trigger.entity).unwrap();
 
@@ -1643,6 +1659,11 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
         if dropdown_open.get(child).is_ok() {
             return;
         }
+    }
+
+    // close all other open menus
+    for menu in all_menus.iter() {
+        commands.entity(menu).despawn();
     }
 
     let options: Vec<_> = T::iter()
@@ -1681,17 +1702,34 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
         ThemeBackgroundColor(tokens::BUTTON_BG),
         children![
             (
-                DropdownFilterInput,
-                text_input(
-                    TextInputProps {
-                        width: Val::Percent(100.0),                        
-                        height: Val::Px(24.0),
-                        placeholder: "Filter...".to_string(),
-                        corners: RoundedCorners::Top,
-                        ..default()
-                    },
-                    TextInputContents::default()
-                ),
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![
+                    (
+                        DropdownFilterInput,
+                        text_input(
+                            TextInputProps {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(24.0),
+                                placeholder: "Filter...".to_string(),
+                                corners: RoundedCorners::Top,
+                                ..default()
+                            },
+                            TextInputContents::default()
+                        ),
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("×"), ThemedText)),
+                        ),
+                        observe(on_close_dropdown_click),
+                    ),
+                ],
             ),
             scroll(
                 ScrollProps::vertical(px(400.0)),
@@ -1713,6 +1751,7 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
     parent_query: Query<&ChildOf>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>,
 ) {
     let child_of = parent_query.get(trigger.entity).unwrap();
 
@@ -1721,6 +1760,11 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
         if dropdown_open.get(child).is_ok() {
             return;
         }
+    }
+
+    // close all other open menus
+    for menu in all_menus.iter() {
+        commands.entity(menu).despawn();
     }
 
     let options: Vec<_> = T::iter()
@@ -1772,17 +1816,34 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
         ThemeBackgroundColor(tokens::WINDOW_BG),
         children![
             (
-                DropdownFilterInput,
-                text_input(
-                    TextInputProps {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(24.0),
-                        placeholder: "Filter...".to_string(),
-                        corners: RoundedCorners::Top,
-                        ..default()
-                    },
-                    TextInputContents::default()
-                ),
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![
+                    (
+                        DropdownFilterInput,
+                        text_input(
+                            TextInputProps {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(24.0),
+                                placeholder: "Filter...".to_string(),
+                                corners: RoundedCorners::Top,
+                                ..default()
+                            },
+                            TextInputContents::default()
+                        ),
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("×"), ThemedText)),
+                        ),
+                        observe(on_close_dropdown_click),
+                    ),
+                ],
             ),
             scroll(
                 ScrollProps::vertical(px(400.0)),
@@ -1797,12 +1858,16 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
 
 
 /// Close dropdown when hover exits
-fn on_hover_exit(trigger: On<Pointer<Out>>, mut commands: Commands, hover_query: Query<&Hovered>) {    
-    if let Ok(hovered) = hover_query.get(trigger.entity) {
-        if !hovered.0 {
-            commands.entity(trigger.entity).despawn();
-        }
-    }
+// TODO: re-enable hover exit behavior
+// fn on_hover_exit(trigger: On<Pointer<Out>>, mut commands: Commands, hover_query: Query<&Hovered>) {
+//     if let Ok(hovered) = hover_query.get(trigger.entity) {
+//         if !hovered.0 {
+//             commands.entity(trigger.entity).despawn();
+//         }
+//     }
+// }
+fn on_hover_exit(_trigger: On<Pointer<Out>>, _commands: Commands, _hover_query: Query<&Hovered>) {
+    // disabled - using close button instead
 }
 
 /// Filter options based on text input (for dropdowns)

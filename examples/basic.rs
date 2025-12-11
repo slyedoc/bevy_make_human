@@ -75,17 +75,12 @@ fn setup(
              ClothingAsset::ToigoMaleSuit3,
              ClothingAsset::ToigoAnkleBootsMale,
         ]),
-        Phenotype {
-            race: Race::Caucasian,
-            gender: 1.0,
-            age: 0.5,
-            muscle: 0.3,
-            weight: 0.4,
-            ..default()
-        },
+        Morphs(vec![
+            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
+        ]),
         Transform::from_xyz(-1.0, 0.0, 0.0),
     ));
-    
+
     commands.spawn((
         Name::new("Sarah"),
         Human,
@@ -100,16 +95,10 @@ fn setup(
         Tongue::Tongue01,
         Clothing(vec![
              ClothingAsset::ElvsGoddessDress8,
-             //ClothingAsset::ToigoAnkleBootsMale,
         ]),
-        Phenotype {
-            race: Race::Caucasian,
-            gender: 0.0,
-            age: 0.5,
-            muscle: 0.3,
-            weight: 0.4,
-            ..default()
-        },
+        Morphs(vec![
+            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),
+        ]),
         Transform::from_xyz(1.0, 0.0, 0.0),
     ));
 }

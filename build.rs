@@ -97,8 +97,8 @@ fn main() -> io::Result<()> {
     // Expression targets - for facial animation (ARKit compatible)
     generate_expression_enum(&mut f, &assets_dir)?;
 
-    // Phenotype - macrodetails for race/gender/age/muscle/weight etc
-    generate_phenotype(&mut f, &assets_dir)?;
+    // MacroMorphs - scanned from macrodetails, breast, height, proportions folders
+    generate_macro_morphs(&mut f, &assets_dir)?;
 
     // MHPart trait for generic part handling
     generate_mhpart_trait(&mut f)?;
@@ -759,6 +759,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Generate unified MorphTarget enum
     writeln!(f, "/// Unified morph target enum containing all categories")?;
     writeln!(f, "/// Binary pairs: -1.0 to 1.0, Singles: 0.0 to 1.0")?;
+    writeln!(f, "/// Macro morphs: 0.0 to 1.0 (macrodetails, height, proportions, breast)")?;
     writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]")?;
     writeln!(f, "pub enum MorphTarget {{")?;
 
@@ -771,13 +772,17 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "    {}({}),", variant, enum_name)?;
     }
+    // Add Macro variant for macro morphs
+    writeln!(f, "    /// Macro morphs (macrodetails, height, proportions, breast)")?;
+    writeln!(f, "    Macro(MacroMorph),")?;
 
     writeln!(f, "}}")?;
     writeln!(f)?;
 
     writeln!(f, "impl MorphTarget {{")?;
-    writeln!(f, "    /// Get target path based on sign of value")?;
-    writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&str> {{")?;
+    writeln!(f, "    /// Get target path based on sign of value (for simple morphs)")?;
+    writeln!(f, "    /// For simple macro morphs returns avg path, for interpolated returns None")?;
+    writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{")?;
     writeln!(f, "        match self {{")?;
 
     for category in &category_names {
@@ -788,13 +793,35 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "            Self::{}(m) => m.target_path(value),", variant)?;
     }
+    writeln!(f, "            Self::Macro(m) => {{")?;
+    writeln!(f, "                if m.is_interpolated() {{ None }} else {{ m.paths().1 }}")?;
+    writeln!(f, "            }}")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
+    writeln!(f, "    /// Get interpolation paths for macro morphs (min, avg, max)")?;
+    writeln!(f, "    /// Returns None for body morphs")?;
+    writeln!(f, "    pub fn macro_paths(&self) -> Option<(Option<&'static str>, Option<&'static str>, Option<&'static str>)> {{")?;
+    writeln!(f, "        match self {{")?;
+    writeln!(f, "            Self::Macro(m) => Some(m.paths()),")?;
+    writeln!(f, "            _ => None,")?;
+    writeln!(f, "        }}")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
+
+    writeln!(f, "    /// Check if this is an interpolated macro morph")?;
+    writeln!(f, "    pub fn is_interpolated(&self) -> bool {{")?;
+    writeln!(f, "        match self {{")?;
+    writeln!(f, "            Self::Macro(m) => m.is_interpolated(),")?;
+    writeln!(f, "            _ => false,")?;
+    writeln!(f, "        }}")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
+
     writeln!(f, "    /// Get positive target path")?;
-    writeln!(f, "    pub fn pos_path(&self) -> Option<&str> {{")?;
+    writeln!(f, "    pub fn pos_path(&self) -> Option<&'static str> {{")?;
     writeln!(f, "        match self {{")?;
 
     for category in &category_names {
@@ -805,13 +832,14 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "            Self::{}(m) => m.pos_path(),", variant)?;
     }
+    writeln!(f, "            Self::Macro(m) => m.paths().1,")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get negative target path")?;
-    writeln!(f, "    pub fn neg_path(&self) -> Option<&str> {{")?;
+    writeln!(f, "    /// Get negative target path (None for macro morphs)")?;
+    writeln!(f, "    pub fn neg_path(&self) -> Option<&'static str> {{")?;
     writeln!(f, "        match self {{")?;
 
     for category in &category_names {
@@ -822,12 +850,14 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "            Self::{}(m) => m.neg_path(),", variant)?;
     }
+    writeln!(f, "            Self::Macro(_) => None,")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
     writeln!(f, "    /// Check if this is a single (0..1) vs binary (-1..1)")?;
+    writeln!(f, "    /// Macro morphs are always single")?;
     writeln!(f, "    pub fn is_single(&self) -> bool {{")?;
     writeln!(f, "        match self {{")?;
 
@@ -839,6 +869,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "            Self::{}(m) => m.is_single(),", variant)?;
     }
+    writeln!(f, "            Self::Macro(_) => true,")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
@@ -856,6 +887,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let variant = sanitize_name(category);
         writeln!(f, "            Self::{}(m) => m.value_range(),", variant)?;
     }
+    writeln!(f, "            Self::Macro(_) => (0.0, 1.0),")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
@@ -875,6 +907,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let enum_name = format!("{}Morph", variant);
         writeln!(f, "            .chain({}::iter().map(Self::{}))", enum_name, variant)?;
     }
+    writeln!(f, "            .chain(MacroMorph::iter().map(Self::Macro))")?;
     writeln!(f, "    }}")?;
     writeln!(f, "}}")?;
     writeln!(f)?;
@@ -964,9 +997,31 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         return Ok(());
     }
 
+    // Ethnicity enum for expression targets
+    writeln!(f, "/// Ethnicity for expression targets")?;
+    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect)]")?;
+    writeln!(f, "pub enum Ethnicity {{")?;
+    writeln!(f, "    #[default]")?;
+    writeln!(f, "    Caucasian,")?;
+    writeln!(f, "    African,")?;
+    writeln!(f, "    Asian,")?;
+    writeln!(f, "}}")?;
+    writeln!(f)?;
+
+    writeln!(f, "impl Ethnicity {{")?;
+    writeln!(f, "    pub fn as_str(&self) -> &'static str {{")?;
+    writeln!(f, "        match self {{")?;
+    writeln!(f, "            Self::Caucasian => \"caucasian\",")?;
+    writeln!(f, "            Self::African => \"african\",")?;
+    writeln!(f, "            Self::Asian => \"asian\",")?;
+    writeln!(f, "        }}")?;
+    writeln!(f, "    }}")?;
+    writeln!(f, "}}")?;
+    writeln!(f)?;
+
     writeln!(f, "/// Expression targets for facial animation")?;
     writeln!(f, "/// All values are 0.0 to 1.0 (single-sided morphs)")?;
-    writeln!(f, "/// Use with Race to get ethnicity-specific target path")?;
+    writeln!(f, "/// Use with Ethnicity to get ethnicity-specific target path")?;
     writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, Reflect)]")?;
     writeln!(f, "pub enum Expression {{")?;
 
@@ -994,11 +1049,11 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    // Get target path for a specific race
+    // Get target path for a specific ethnicity
     writeln!(f, "    /// Get the full asset path for this expression target")?;
-    writeln!(f, "    /// Uses the specified race for ethnicity-specific morphs")?;
-    writeln!(f, "    pub fn target_path(&self, race: Race) -> String {{")?;
-    writeln!(f, "        format!(\"make_human/targets/expression/units/{{}}/{{}}.target\", race.as_str(), self.target_name())")?;
+    writeln!(f, "    /// Uses the specified ethnicity for ethnicity-specific morphs")?;
+    writeln!(f, "    pub fn target_path(&self, ethnicity: Ethnicity) -> String {{")?;
+    writeln!(f, "        format!(\"make_human/targets/expression/units/{{}}/{{}}.target\", ethnicity.as_str(), self.target_name())")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
@@ -1019,340 +1074,182 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Generate Phenotype struct and Race enum for macrodetails
-fn generate_phenotype(f: &mut File, _assets_dir: &Path) -> io::Result<()> {
-    // Race enum
-    writeln!(f, "/// Race for phenotype macrodetails")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect)]")?;
-    writeln!(f, "pub enum Race {{")?;
-    writeln!(f, "    #[default]")?;
-    writeln!(f, "    Caucasian,")?;
-    writeln!(f, "    African,")?;
-    writeln!(f, "    Asian,")?;
+/// Interpolation suffixes - last segment of filename that indicates min/avg/max
+const INTERP_SUFFIXES: &[(&str, &str)] = &[
+    ("-minweight", "weight"),
+    ("-averageweight", "weight"),
+    ("-maxweight", "weight"),
+    ("-minheight", "height"),
+    ("-maxheight", "height"),
+    ("-idealproportions", "proportions"),
+    ("-uncommonproportions", "proportions"),
+];
+
+/// Try to split filename into (base, suffix, group) if it ends with an interp suffix
+fn split_interp_suffix(name: &str) -> Option<(&str, &str, &str)> {
+    for (suffix, group) in INTERP_SUFFIXES {
+        if name.ends_with(suffix) {
+            let base = &name[..name.len() - suffix.len()];
+            return Some((base, *suffix, *group));
+        }
+    }
+    None
+}
+
+/// Macro morph data - either single path or interpolated group
+#[derive(Debug)]
+struct MacroMorphData {
+    variant: String,
+    /// For single morphs: (None, path, None). For interp: (min, avg, max) paths
+    paths: (Option<String>, Option<String>, Option<String>),
+}
+
+/// Generate MacroMorph enum by scanning macro target folders
+fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
+    let targets_dir = assets_dir.join("targets");
+
+    let macro_folders = [
+        ("macrodetails", ""),
+        ("macrodetails/height", "Height"),
+        ("macrodetails/proportions", "Proportions"),
+        ("breast", "Breast"),
+    ];
+
+    // Group files by base name for interpolation
+    let mut interp_groups: std::collections::HashMap<String, (Option<String>, Option<String>, Option<String>)> =
+        std::collections::HashMap::new();
+    let mut singles: Vec<(String, String)> = Vec::new(); // (variant, path)
+
+    for (folder, prefix) in &macro_folders {
+        let folder_path = targets_dir.join(folder);
+        if !folder_path.exists() {
+            continue;
+        }
+
+        let entries: Vec<_> = fs::read_dir(&folder_path)?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext == "target")
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        for entry in entries {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            let base_name = name.trim_end_matches(".target");
+            let path = format!("make_human/targets/{}/{}.target", folder, base_name);
+
+            if let Some((base, suffix, _group)) = split_interp_suffix(base_name) {
+                // Part of interpolation group
+                let key = format!("{}:{}", prefix, base);
+                let entry = interp_groups.entry(key).or_insert((None, None, None));
+
+                if suffix.contains("min") || suffix.contains("uncommon") {
+                    entry.0 = Some(path);
+                } else if suffix.contains("average") {
+                    entry.1 = Some(path);
+                } else if suffix.contains("max") || suffix.contains("ideal") {
+                    entry.2 = Some(path);
+                }
+            } else {
+                // Single file
+                let variant = if prefix.is_empty() {
+                    sanitize_name(base_name)
+                } else {
+                    format!("{}{}", prefix, sanitize_name(base_name))
+                };
+                singles.push((variant, path));
+            }
+        }
+    }
+
+    // Build final list
+    let mut all_morphs: Vec<MacroMorphData> = Vec::new();
+
+    // Add singles
+    for (variant, path) in singles {
+        all_morphs.push(MacroMorphData {
+            variant,
+            paths: (None, Some(path), None),
+        });
+    }
+
+    // Add interpolation groups
+    for (key, paths) in interp_groups {
+        let parts: Vec<&str> = key.splitn(2, ':').collect();
+        let prefix = parts[0];
+        let base = parts.get(1).unwrap_or(&"");
+
+        let variant = if prefix.is_empty() {
+            sanitize_name(base)
+        } else {
+            format!("{}{}", prefix, sanitize_name(base))
+        };
+
+        all_morphs.push(MacroMorphData { variant, paths });
+    }
+
+    // Sort by variant name
+    all_morphs.sort_by(|a, b| a.variant.cmp(&b.variant));
+
+    // Generate enum
+    writeln!(f, "/// Macro morph targets from macrodetails, height, proportions, breast folders")?;
+    writeln!(f, "/// Single morphs: value 0-1 scales the morph")?;
+    writeln!(f, "/// Interpolated morphs: value 0-1 blends min->avg->max")?;
+    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Reflect)]")?;
+    writeln!(f, "pub enum MacroMorph {{")?;
+
+    for morph in &all_morphs {
+        writeln!(f, "    {},", morph.variant)?;
+    }
+
     writeln!(f, "}}")?;
     writeln!(f)?;
 
-    writeln!(f, "impl Race {{")?;
-    writeln!(f, "    pub fn as_str(&self) -> &'static str {{")?;
+    // Impl block
+    writeln!(f, "impl MacroMorph {{")?;
+
+    // paths() method - returns (min, avg, max) Option paths
+    writeln!(f, "    /// Get interpolation paths (min, avg, max)")?;
+    writeln!(f, "    /// Single morphs return (None, Some(path), None)")?;
+    writeln!(f, "    pub fn paths(&self) -> (Option<&'static str>, Option<&'static str>, Option<&'static str>) {{")?;
     writeln!(f, "        match self {{")?;
-    writeln!(f, "            Self::Caucasian => \"caucasian\",")?;
-    writeln!(f, "            Self::African => \"african\",")?;
-    writeln!(f, "            Self::Asian => \"asian\",")?;
+
+    for morph in &all_morphs {
+        let min = morph.paths.0.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
+        let avg = morph.paths.1.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
+        let max = morph.paths.2.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
+        writeln!(f, "            Self::{} => ({}, {}, {}),", morph.variant, min, avg, max)?;
+    }
+
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
+    writeln!(f)?;
+
+    // is_interpolated() method
+    writeln!(f, "    /// Check if this morph interpolates between multiple targets")?;
+    writeln!(f, "    pub fn is_interpolated(&self) -> bool {{")?;
+    writeln!(f, "        let (min, _, max) = self.paths();")?;
+    writeln!(f, "        min.is_some() || max.is_some()")?;
+    writeln!(f, "    }}")?;
+    writeln!(f)?;
+
+    writeln!(f, "    /// Get valid value range (always 0.0 to 1.0 for macro morphs)")?;
+    writeln!(f, "    pub fn value_range(&self) -> (f32, f32) {{")?;
+    writeln!(f, "        (0.0, 1.0)")?;
+    writeln!(f, "    }}")?;
+
     writeln!(f, "}}")?;
     writeln!(f)?;
 
-    // Phenotype struct with all sliders
-    writeln!(f, "/// Phenotype controls for macrodetail morphs")?;
-    writeln!(f, "/// All values are 0.0 to 1.0")?;
-    writeln!(f, "#[derive(Component, Debug, Clone, Copy, PartialEq, Reflect)]")?;
-    writeln!(f, "#[reflect(Component)]")?;
-    writeln!(f, "pub struct Phenotype {{")?;
-    writeln!(f, "    /// Race affects base body shape")?;
-    writeln!(f, "    pub race: Race,")?;
-    writeln!(f, "    /// 0.0 = female, 1.0 = male")?;
-    writeln!(f, "    pub gender: f32,")?;
-    writeln!(f, "    /// 0.0 = baby, ~0.19 = child, ~0.5 = young, 1.0 = old")?;
-    writeln!(f, "    pub age: f32,")?;
-    writeln!(f, "    /// 0.0 = min muscle, 0.5 = average, 1.0 = max")?;
-    writeln!(f, "    pub muscle: f32,")?;
-    writeln!(f, "    /// 0.0 = min weight, 0.5 = average, 1.0 = max")?;
-    writeln!(f, "    pub weight: f32,")?;
-    writeln!(f, "    /// 0.0 = min height, 1.0 = max height")?;
-    writeln!(f, "    pub height: f32,")?;
-    writeln!(f, "    /// 0.0 = uncommon, 1.0 = ideal proportions")?;
-    writeln!(f, "    pub proportions: f32,")?;
-    writeln!(f, "    /// 0.0 = min cup, 0.5 = average, 1.0 = max (female only)")?;
-    writeln!(f, "    pub cupsize: f32,")?;
-    writeln!(f, "    /// 0.0 = min firmness, 0.5 = average, 1.0 = max (female only)")?;
-    writeln!(f, "    pub firmness: f32,")?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
-
-    writeln!(f, "impl Default for Phenotype {{")?;
-    writeln!(f, "    fn default() -> Self {{")?;
-    writeln!(f, "        Self {{")?;
-    writeln!(f, "            race: Race::Caucasian,")?;
-    writeln!(f, "            gender: 0.0,  // female")?;
-    writeln!(f, "            age: 0.5,     // young adult")?;
-    writeln!(f, "            muscle: 0.5,  // average")?;
-    writeln!(f, "            weight: 0.5,  // average")?;
-    writeln!(f, "            height: 0.5,  // average")?;
-    writeln!(f, "            proportions: 0.75, // somewhat ideal")?;
-    writeln!(f, "            cupsize: 0.5, // average")?;
-    writeln!(f, "            firmness: 0.5, // average")?;
-    writeln!(f, "        }}")?;
+    // Display impl
+    writeln!(f, "impl std::fmt::Display for MacroMorph {{")?;
+    writeln!(f, "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{")?;
+    writeln!(f, "        write!(f, \"{{:?}}\", self)")?;
     writeln!(f, "    }}")?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
-
-    // Helper to interpolate between two values based on position in range
-    writeln!(f, "/// Interpolation weight for a value within a range segment")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy)]")?;
-    writeln!(f, "pub struct InterpWeight {{")?;
-    writeln!(f, "    pub low: &'static str,")?;
-    writeln!(f, "    pub high: &'static str,")?;
-    writeln!(f, "    pub t: f32, // 0.0 = all low, 1.0 = all high")?;
-    writeln!(f, "}}")?;
-    writeln!(f)?;
-
-    // Generate resolve methods
-    writeln!(f, "impl Phenotype {{")?;
-
-    // Gender interpolation
-    writeln!(f, "    fn gender_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        InterpWeight {{ low: \"female\", high: \"male\", t: self.gender.clamp(0.0, 1.0) }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Age interpolation (3 segments)
-    writeln!(f, "    fn age_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        let v = self.age.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.1875 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"baby\", high: \"child\", t: v / 0.1875 }}")?;
-    writeln!(f, "        }} else if v < 0.5 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"child\", high: \"young\", t: (v - 0.1875) / (0.5 - 0.1875) }}")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"young\", high: \"old\", t: (v - 0.5) / 0.5 }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Muscle interpolation (2 segments)
-    writeln!(f, "    fn muscle_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        let v = self.muscle.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.5 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"minmuscle\", high: \"averagemuscle\", t: v / 0.5 }}")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"averagemuscle\", high: \"maxmuscle\", t: (v - 0.5) / 0.5 }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Weight interpolation (2 segments)
-    writeln!(f, "    fn weight_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        let v = self.weight.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.5 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"minweight\", high: \"averageweight\", t: v / 0.5 }}")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"averageweight\", high: \"maxweight\", t: (v - 0.5) / 0.5 }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Height (only at extremes)
-    writeln!(f, "    fn height_weights(&self) -> Option<InterpWeight> {{")?;
-    writeln!(f, "        let v = self.height.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.49 {{")?;
-    writeln!(f, "            Some(InterpWeight {{ low: \"minheight\", high: \"\", t: 1.0 - v / 0.49 }})")?;
-    writeln!(f, "        }} else if v > 0.51 {{")?;
-    writeln!(f, "            Some(InterpWeight {{ low: \"\", high: \"maxheight\", t: (v - 0.51) / 0.49 }})")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            None")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Proportions (only at extremes)
-    writeln!(f, "    fn proportions_weights(&self) -> Option<InterpWeight> {{")?;
-    writeln!(f, "        let v = self.proportions.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.5 {{")?;
-    writeln!(f, "            Some(InterpWeight {{ low: \"uncommonproportions\", high: \"\", t: 1.0 - v / 0.5 }})")?;
-    writeln!(f, "        }} else if v > 0.5 {{")?;
-    writeln!(f, "            Some(InterpWeight {{ low: \"\", high: \"idealproportions\", t: (v - 0.5) / 0.5 }})")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            None")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Cupsize interpolation (2 segments)
-    writeln!(f, "    fn cupsize_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        let v = self.cupsize.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.5 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"mincup\", high: \"averagecup\", t: v / 0.5 }}")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"averagecup\", high: \"maxcup\", t: (v - 0.5) / 0.5 }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Firmness interpolation (2 segments)
-    writeln!(f, "    fn firmness_weights(&self) -> InterpWeight {{")?;
-    writeln!(f, "        let v = self.firmness.clamp(0.0, 1.0);")?;
-    writeln!(f, "        if v < 0.5 {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"minfirmness\", high: \"averagefirmness\", t: v / 0.5 }}")?;
-    writeln!(f, "        }} else {{")?;
-    writeln!(f, "            InterpWeight {{ low: \"averagefirmness\", high: \"maxfirmness\", t: (v - 0.5) / 0.5 }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Resolve to list of (path, weight) for race-gender-age targets
-    writeln!(f, "    /// Get weighted race-gender-age target paths")?;
-    writeln!(f, "    /// Returns up to 8 targets with interpolation weights")?;
-    writeln!(f, "    pub fn race_gender_age_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = Vec::new();")?;
-    writeln!(f, "        let gender = self.gender_weights();")?;
-    writeln!(f, "        let age = self.age_weights();")?;
-    writeln!(f, "        let race = self.race.as_str();")?;
-    writeln!(f)?;
-    writeln!(f, "        // 2x2 interpolation: gender (low/high) x age (low/high)")?;
-    writeln!(f, "        for (g_name, g_weight) in [(gender.low, 1.0 - gender.t), (gender.high, gender.t)] {{")?;
-    writeln!(f, "            if g_weight < 0.001 {{ continue; }}")?;
-    writeln!(f, "            for (a_name, a_weight) in [(age.low, 1.0 - age.t), (age.high, age.t)] {{")?;
-    writeln!(f, "                if a_weight < 0.001 {{ continue; }}")?;
-    writeln!(f, "                let path = format!(\"make_human/targets/macrodetails/{{}}-{{}}-{{}}.target\", race, g_name, a_name);")?;
-    writeln!(f, "                result.push((path, g_weight * a_weight));")?;
-    writeln!(f, "            }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Resolve universal gender-age-muscle-weight targets
-    writeln!(f, "    /// Get weighted universal gender-age-muscle-weight target paths")?;
-    writeln!(f, "    /// Returns up to 16 targets with interpolation weights")?;
-    writeln!(f, "    pub fn universal_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = Vec::new();")?;
-    writeln!(f, "        let gender = self.gender_weights();")?;
-    writeln!(f, "        let age = self.age_weights();")?;
-    writeln!(f, "        let muscle = self.muscle_weights();")?;
-    writeln!(f, "        let weight = self.weight_weights();")?;
-    writeln!(f)?;
-    writeln!(f, "        // 2^4 = 16 corner interpolation")?;
-    writeln!(f, "        for (g_name, g_w) in [(gender.low, 1.0 - gender.t), (gender.high, gender.t)] {{")?;
-    writeln!(f, "            if g_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "            for (a_name, a_w) in [(age.low, 1.0 - age.t), (age.high, age.t)] {{")?;
-    writeln!(f, "                if a_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                for (m_name, m_w) in [(muscle.low, 1.0 - muscle.t), (muscle.high, muscle.t)] {{")?;
-    writeln!(f, "                    if m_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                    for (w_name, w_w) in [(weight.low, 1.0 - weight.t), (weight.high, weight.t)] {{")?;
-    writeln!(f, "                        if w_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                        let path = format!(\"make_human/targets/macrodetails/universal-{{}}-{{}}-{{}}-{{}}.target\", g_name, a_name, m_name, w_name);")?;
-    writeln!(f, "                        result.push((path, g_w * a_w * m_w * w_w));")?;
-    writeln!(f, "                    }}")?;
-    writeln!(f, "                }}")?;
-    writeln!(f, "            }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Height targets
-    writeln!(f, "    /// Get weighted height target paths")?;
-    writeln!(f, "    pub fn height_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = Vec::new();")?;
-    writeln!(f, "        let Some(height) = self.height_weights() else {{ return result; }};")?;
-    writeln!(f, "        let gender = self.gender_weights();")?;
-    writeln!(f, "        let age = self.age_weights();")?;
-    writeln!(f, "        let muscle = self.muscle_weights();")?;
-    writeln!(f, "        let weight = self.weight_weights();")?;
-    writeln!(f)?;
-    writeln!(f, "        let h_name = if !height.low.is_empty() {{ height.low }} else {{ height.high }};")?;
-    writeln!(f, "        let h_w = if !height.low.is_empty() {{ height.t }} else {{ height.t }};")?;
-    writeln!(f, "        if h_w < 0.001 {{ return result; }}")?;
-    writeln!(f)?;
-    writeln!(f, "        for (g_name, g_w) in [(gender.low, 1.0 - gender.t), (gender.high, gender.t)] {{")?;
-    writeln!(f, "            if g_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "            for (a_name, a_w) in [(age.low, 1.0 - age.t), (age.high, age.t)] {{")?;
-    writeln!(f, "                if a_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                for (m_name, m_w) in [(muscle.low, 1.0 - muscle.t), (muscle.high, muscle.t)] {{")?;
-    writeln!(f, "                    if m_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                    for (w_name, w_w) in [(weight.low, 1.0 - weight.t), (weight.high, weight.t)] {{")?;
-    writeln!(f, "                        if w_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                        let path = format!(\"make_human/targets/macrodetails/height/{{}}-{{}}-{{}}-{{}}-{{}}.target\", g_name, a_name, m_name, w_name, h_name);")?;
-    writeln!(f, "                        result.push((path, g_w * a_w * m_w * w_w * h_w));")?;
-    writeln!(f, "                    }}")?;
-    writeln!(f, "                }}")?;
-    writeln!(f, "            }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Proportions targets
-    writeln!(f, "    /// Get weighted proportions target paths")?;
-    writeln!(f, "    pub fn proportions_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = Vec::new();")?;
-    writeln!(f, "        let Some(props) = self.proportions_weights() else {{ return result; }};")?;
-    writeln!(f, "        let gender = self.gender_weights();")?;
-    writeln!(f, "        let age = self.age_weights();")?;
-    writeln!(f, "        let muscle = self.muscle_weights();")?;
-    writeln!(f, "        let weight = self.weight_weights();")?;
-    writeln!(f)?;
-    writeln!(f, "        let p_name = if !props.low.is_empty() {{ props.low }} else {{ props.high }};")?;
-    writeln!(f, "        let p_w = props.t;")?;
-    writeln!(f, "        if p_w < 0.001 {{ return result; }}")?;
-    writeln!(f)?;
-    writeln!(f, "        for (g_name, g_w) in [(gender.low, 1.0 - gender.t), (gender.high, gender.t)] {{")?;
-    writeln!(f, "            if g_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "            for (a_name, a_w) in [(age.low, 1.0 - age.t), (age.high, age.t)] {{")?;
-    writeln!(f, "                if a_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                for (m_name, m_w) in [(muscle.low, 1.0 - muscle.t), (muscle.high, muscle.t)] {{")?;
-    writeln!(f, "                    if m_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                    for (w_name, w_w) in [(weight.low, 1.0 - weight.t), (weight.high, weight.t)] {{")?;
-    writeln!(f, "                        if w_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                        let path = format!(\"make_human/targets/macrodetails/proportions/{{}}-{{}}-{{}}-{{}}-{{}}.target\", g_name, a_name, m_name, w_name, p_name);")?;
-    writeln!(f, "                        result.push((path, g_w * a_w * m_w * w_w * p_w));")?;
-    writeln!(f, "                    }}")?;
-    writeln!(f, "                }}")?;
-    writeln!(f, "            }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // Cupsize/firmness targets (female only, in breast folder)
-    // NOTE: Files only exist when cup OR firmness is NOT average (sparse grid)
-    writeln!(f, "    /// Get weighted cupsize/firmness target paths (female only)")?;
-    writeln!(f, "    pub fn breast_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = Vec::new();")?;
-    writeln!(f, "        // Only applies to female (gender < 0.5)")?;
-    writeln!(f, "        if self.gender > 0.5 {{ return result; }}")?;
-    writeln!(f, "        let gender_factor = 1.0 - self.gender * 2.0; // 1.0 at female, 0.0 at 0.5")?;
-    writeln!(f)?;
-    writeln!(f, "        let age = self.age_weights();")?;
-    writeln!(f, "        let muscle = self.muscle_weights();")?;
-    writeln!(f, "        let weight = self.weight_weights();")?;
-    writeln!(f, "        let cupsize = self.cupsize_weights();")?;
-    writeln!(f, "        let firmness = self.firmness_weights();")?;
-    writeln!(f)?;
-    writeln!(f, "        for (a_name, a_w) in [(age.low, 1.0 - age.t), (age.high, age.t)] {{")?;
-    writeln!(f, "            if a_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "            for (m_name, m_w) in [(muscle.low, 1.0 - muscle.t), (muscle.high, muscle.t)] {{")?;
-    writeln!(f, "                if m_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                for (w_name, w_w) in [(weight.low, 1.0 - weight.t), (weight.high, weight.t)] {{")?;
-    writeln!(f, "                    if w_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                    for (c_name, c_w) in [(cupsize.low, 1.0 - cupsize.t), (cupsize.high, cupsize.t)] {{")?;
-    writeln!(f, "                        if c_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                        for (f_name, f_w) in [(firmness.low, 1.0 - firmness.t), (firmness.high, firmness.t)] {{")?;
-    writeln!(f, "                            if f_w < 0.001 {{ continue; }}")?;
-    writeln!(f, "                            // Skip averagecup-averagefirmness (no file exists)")?;
-    writeln!(f, "                            if c_name == \"averagecup\" && f_name == \"averagefirmness\" {{ continue; }}")?;
-    writeln!(f, "                            let path = format!(\"make_human/targets/breast/female-{{}}-{{}}-{{}}-{{}}-{{}}.target\", a_name, m_name, w_name, c_name, f_name);")?;
-    writeln!(f, "                            result.push((path, a_w * m_w * w_w * c_w * f_w * gender_factor));")?;
-    writeln!(f, "                        }}")?;
-    writeln!(f, "                    }}")?;
-    writeln!(f, "                }}")?;
-    writeln!(f, "            }}")?;
-    writeln!(f, "        }}")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-    writeln!(f)?;
-
-    // All targets combined
-    writeln!(f, "    /// Get all phenotype target paths with weights")?;
-    writeln!(f, "    pub fn all_targets(&self) -> Vec<(String, f32)> {{")?;
-    writeln!(f, "        let mut result = self.race_gender_age_targets();")?;
-    writeln!(f, "        result.extend(self.universal_targets());")?;
-    writeln!(f, "        result.extend(self.height_targets());")?;
-    writeln!(f, "        result.extend(self.proportions_targets());")?;
-    writeln!(f, "        result.extend(self.breast_targets());")?;
-    writeln!(f, "        result")?;
-    writeln!(f, "    }}")?;
-
     writeln!(f, "}}")?;
     writeln!(f)?;
 

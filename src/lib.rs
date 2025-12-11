@@ -233,7 +233,6 @@ fn dirty_check(
             Changed<Clothing>,
             Changed<ClothingOffset>,
             Changed<Morphs>,
-            Changed<Phenotype>,
             Changed<FloorOffset>,
         )>,
     >,
@@ -252,9 +251,8 @@ struct HumanProcessingInput {
     base_vertices: Vec<Vec3>,
     base_vertex_groups: VertexGroups,
 
-    // Morphs
-    phenotype_morphs: Vec<(MorphTargetData, f32)>,
-    regular_morphs: Vec<(MorphTargetData, f32)>,
+    // All morphs (body morphs + macro morphs)
+    morphs: Vec<(MorphTargetData, f32)>,
     // Rig
     rig_bones: RigBones,
     skinning_weights: SkinningWeights,
@@ -296,6 +294,41 @@ fn human_changed(
             parts.push(MHItem::load(MHTag::Clothes, clothing_item, &asset_server));
         }
 
+        // Load all morph targets (unified - body morphs + macro morphs)
+        // For interpolated macro morphs, load min/avg/max with interpolated weights
+        let mut morphs: Vec<(Handle<MorphTargetData>, f32)> = Vec::new();
+
+        for Morph { target, value } in h.morphs.iter() {
+            if target.is_interpolated() {
+                // Interpolated macro morph: value 0..1 maps to min->avg->max
+                if let Some((min_path, avg_path, max_path)) = target.macro_paths() {
+                    let v = value.clamp(0.0, 1.0);
+                    if v < 0.5 {
+                        // Blend min -> avg
+                        let t = v / 0.5;
+                        if let Some(min) = min_path {
+                            morphs.push((asset_server.load(min.to_string()), 1.0 - t));
+                        }
+                        if let Some(avg) = avg_path {
+                            morphs.push((asset_server.load(avg.to_string()), t));
+                        }
+                    } else {
+                        // Blend avg -> max
+                        let t = (v - 0.5) / 0.5;
+                        if let Some(avg) = avg_path {
+                            morphs.push((asset_server.load(avg.to_string()), 1.0 - t));
+                        }
+                        if let Some(max) = max_path {
+                            morphs.push((asset_server.load(max.to_string()), t));
+                        }
+                    }
+                }
+            } else if let Some(path) = target.target_path(*value) {
+                // Simple morph - single path
+                morphs.push((asset_server.load(path.to_string()), value.abs()));
+            }
+        }
+
         commands
             .entity(h.entity)
             .remove::<HumanDirty>()
@@ -309,22 +342,7 @@ fn human_changed(
                 rig_weights: asset_server.load(h.rig.weights().to_string()),
                 clothing_offset: h.clothing_offset.0,
                 parts,
-                morphs: h
-                    .morphs
-                    .0
-                    .iter()
-                    .filter_map(|Morph { target, value }| {
-                        target
-                            .target_path(*value)
-                            .map(|path| (asset_server.load(path.to_string()), *value))
-                    })
-                    .collect(),
-                phenotype_morphs: h
-                    .phenotype
-                    .all_targets()
-                    .into_iter()
-                    .map(|(path, weight)| (asset_server.load(path), weight))
-                    .collect(),
+                morphs,
             });
     }
 }
@@ -371,12 +389,7 @@ fn loading_human_assets(
             let input = HumanProcessingInput {
                 base_vertices: base_mesh.vertices.clone(),
                 base_vertex_groups: base_mesh.vertex_groups.clone(),
-                phenotype_morphs: assets
-                    .phenotype_morphs
-                    .iter()
-                    .filter_map(|(h, w)| morph_target_assets.get(h).map(|m| (m.clone(), *w)))
-                    .collect(),
-                regular_morphs: assets
+                morphs: assets
                     .morphs
                     .iter()
                     .filter_map(|(h, w)| morph_target_assets.get(h).map(|m| (m.clone(), *w)))
@@ -405,8 +418,8 @@ fn loading_human_assets(
 fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
     let mut morphed_vertices = input.base_vertices.clone();
 
-    // Apply phenotype morphs
-    for (morph_data, weight) in &input.phenotype_morphs {
+    // Apply all morphs (unified - body morphs + macro morphs)
+    for (morph_data, weight) in &input.morphs {
         if *weight < 0.001 {
             continue;
         }
@@ -414,17 +427,6 @@ fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
             let idx = mh_idx as usize;
             if idx < morphed_vertices.len() {
                 morphed_vertices[idx] += offset * *weight;
-            }
-        }
-    }
-
-    // Apply regular morphs
-    for (morph_data, value) in &input.regular_morphs {
-        let weight = value.abs();
-        for (&mh_idx, &offset) in &morph_data.offsets {
-            let idx = mh_idx as usize;
-            if idx < morphed_vertices.len() {
-                morphed_vertices[idx] += offset * weight;
             }
         }
     }

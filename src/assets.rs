@@ -28,15 +28,14 @@ pub struct HumanAssets {
     pub skin_obj_base: Handle<ObjBaseMesh>,
     pub skin_proxy: Handle<ProxyAsset>,
     pub skin_material: Handle<StandardMaterial>,
-    
+
     pub parts: Vec<MHItem>,
 
     pub rig_bones: Handle<RigBones>,
     pub rig_weights: Handle<SkinningWeights>,
 
+    /// All morph targets (body morphs + macro morphs)
     pub morphs: Vec<(Handle<MorphTargetData>, f32)>,
-    /// Phenotype macrodetail targets with interpolation weights
-    pub phenotype_morphs: Vec<(Handle<MorphTargetData>, f32)>,
     /// Offset to push clothing outward (prevents skin poke-through)
     pub clothing_offset: f32,
 }
@@ -57,10 +56,6 @@ impl HumanAssets {
         }
 
         for (handle, _value) in &self.morphs {
-            handles.push(handle.clone().untyped());
-        }
-
-        for (handle, _weight) in &self.phenotype_morphs {
             handles.push(handle.clone().untyped());
         }
 
@@ -116,8 +111,9 @@ pub struct MHItemFinal {
     pub mesh: Handle<Mesh>,    
 }
 
-/// A morph target with a value from -1.0 to 1.0
-/// Negative values use the "decr" target, positive use "incr"
+/// A morph target with a value
+/// - Binary morphs (body parts): -1.0 to 1.0 (neg=decr, pos=incr)
+/// - Single/Macro morphs: 0.0 to 1.0
 #[derive(Debug, Clone, Reflect, InspectorOptions)]
 #[reflect(InspectorOptions)]
 pub struct Morph {
@@ -128,10 +124,16 @@ pub struct Morph {
 
 impl Morph {
     pub fn new(target: MorphTarget, value: f32) -> Self {
+        let (min, max) = target.value_range();
         Self {
             target,
-            value: value.clamp(-1.0, 1.0),
+            value: value.clamp(min, max),
         }
+    }
+
+    /// Create a macro morph (convenience for MorphTarget::Macro)
+    pub fn macro_morph(target: MacroMorph, value: f32) -> Self {
+        Self::new(MorphTarget::Macro(target), value)
     }
 }
 

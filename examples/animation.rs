@@ -69,13 +69,9 @@ fn setup(
             ClothingAsset::ToigoMaleSuit3,
             ClothingAsset::ToigoAnkleBootsMale,
         ]),
-        Phenotype {
-            gender: 1.0,
-            age: 0.5,
-            muscle: 0.3,
-            weight: 0.4,
-            ..default()
-        },
+        Morphs(vec![
+            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
+        ]),
         Transform::from_xyz(0.0, 0.0, 0.0),
     )) .observe(apply_gltf_animation);
 }
