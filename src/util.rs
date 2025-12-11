@@ -74,6 +74,46 @@ pub fn apply_skinning_weights_to_proxy(
 }
 
 
+/// Average normals for vertices at the same position (fixes UV seam artifacts)
+fn average_normals_at_seams(mesh: &mut Mesh) {
+    let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+        .and_then(|a| a.as_float3()) else { return };
+    let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
+        .and_then(|a| a.as_float3()) else { return };
+
+    // Group vertices by position (quantized to avoid float precision issues)
+    let mut pos_to_indices: HashMap<[i32; 3], Vec<usize>> = HashMap::default();
+    for (i, pos) in positions.iter().enumerate() {
+        // Quantize to ~0.0001 precision
+        let key = [
+            (pos[0] * 10000.0) as i32,
+            (pos[1] * 10000.0) as i32,
+            (pos[2] * 10000.0) as i32,
+        ];
+        pos_to_indices.entry(key).or_default().push(i);
+    }
+
+    // Average normals for vertices at same position
+    let mut new_normals: Vec<[f32; 3]> = normals.to_vec();
+    for indices in pos_to_indices.values() {
+        if indices.len() <= 1 { continue; }
+
+        // Sum all normals at this position
+        let mut sum = Vec3::ZERO;
+        for &i in indices {
+            sum += Vec3::from_array(normals[i]);
+        }
+        let avg = sum.normalize_or_zero();
+
+        // Apply averaged normal to all vertices at this position
+        for &i in indices {
+            new_normals[i] = avg.to_array();
+        }
+    }
+
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, new_normals);
+}
+
 /// Build fitted mesh from final verts
 fn build_fitted_mesh(verts: &[Vec3], original_mesh: &Mesh) -> Mesh {
     let start = std::time::Instant::now();
@@ -91,8 +131,10 @@ fn build_fitted_mesh(verts: &[Vec3], original_mesh: &Mesh) -> Mesh {
         new_mesh = new_mesh.with_inserted_indices(indices.clone());
     }
 
-    // Compute normals - will auto-handle winding based on indices
+    // Compute normals then average at UV seams
     new_mesh = new_mesh.with_computed_area_weighted_normals();
+    average_normals_at_seams(&mut new_mesh);
+
     let result = new_mesh.with_generated_tangents().unwrap_or_else(|e| {
         warn!("Failed tangent gen: {:?}", e);
         // Recreate without tangents
@@ -108,7 +150,9 @@ fn build_fitted_mesh(verts: &[Vec3], original_mesh: &Mesh) -> Mesh {
         if let Some(idx) = original_mesh.indices() {
             m = m.with_inserted_indices(idx.clone());
         }
-        m.with_computed_area_weighted_normals()
+        m = m.with_computed_area_weighted_normals();
+        average_normals_at_seams(&mut m);
+        m
     });
     debug!(
         "build_fitted_mesh: {} verts took {:?}",
