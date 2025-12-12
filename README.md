@@ -46,7 +46,7 @@ I will most likely remove most these and give instructions to download and zip b
   - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
   - [ ] Script to create meta files for any obj and json files in assets/make_human
   - [ ] Animations
-    - [ ] Aabb
+    - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
     - [ ] Walk cycles
     - [ ] Facial rigs
   - [ ] support [Delete Groups](https://static.makehumancommunity.org/assets/creatingassets/makeclothes/makeclothes_deletegroups.html) instead of ClothingOffset

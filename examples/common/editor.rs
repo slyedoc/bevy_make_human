@@ -30,9 +30,6 @@ use bevy_inspector_egui::{
 use bevy_make_human::prelude::*;
 use std::ops::DerefMut;
 
-pub mod prelude {
-    pub use crate::{EditorPlugin, EditorState};
-}
 
 #[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub enum EditorState {
@@ -101,10 +98,11 @@ impl Plugin for EditorPlugin {
                     
                 )
                     .distributive_run_if(input_just_pressed(KeyCode::F3)),                                            
+                toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),                
                 #[cfg(feature = "debug_draw")]
-                toggle_skeleton.run_if(input_just_pressed(KeyCode::F4)),                
+                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),                
                 #[cfg(feature = "debug_draw")]
-                toggle_joint_axes.run_if(input_just_pressed(KeyCode::F5)),
+                toggle_joint_axes.run_if(input_just_pressed(KeyCode::F6)),
             ),
         );
         
@@ -243,12 +241,6 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
         });
 }
 
-pub fn in_editor(state: Res<State<EditorState>>) -> bool {
-    match state.get() {
-        EditorState::Enabled => true,
-        EditorState::Disabled => false,
-    }
-}
 
 fn toggle_editor(mut next_state: ResMut<NextState<EditorState>>, state: Res<State<EditorState>>) {
     next_state.set(match state.get() {

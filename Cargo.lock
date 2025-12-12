@@ -1234,6 +1234,7 @@ dependencies = [
  "bevy_enhanced_input",
  "bevy_mod_billboard",
  "bevy_mod_mipmap_generator",
+ "bevy_mod_skinned_aabb",
  "bevy_obj",
  "bevy_ui_text_input",
  "cosmic-text",
@@ -1315,6 +1316,26 @@ dependencies = [
  "bevy",
  "futures-lite",
  "image",
+]
+
+[[package]]
+name = "bevy_mod_skinned_aabb"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c120b6e589cf4706ffb3e10e0f9d964dfde62533d7e51ee72a9b618f077e377"
+dependencies = [
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_color",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_gizmos",
+ "bevy_log",
+ "bevy_math",
+ "bevy_mesh",
+ "bevy_reflect",
+ "bevy_transform",
 ]
 
 [[package]]
@@ -3500,7 +3521,7 @@ dependencies = [
  "png",
  "tiff",
  "zune-core 0.5.0",
- "zune-jpeg 0.5.5",
+ "zune-jpeg 0.5.6",
 ]
 
 [[package]]
@@ -7155,9 +7176,9 @@ dependencies = [
 
 [[package]]
 name = "zune-jpeg"
-version = "0.5.5"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc6fb7703e32e9a07fb3f757360338b3a567a5054f21b5f52a666752e333d58e"
+checksum = "f520eebad972262a1dde0ec455bce4f8b298b1e5154513de58c114c4c54303e8"
 dependencies = [
  "zune-core 0.5.0",
 ]

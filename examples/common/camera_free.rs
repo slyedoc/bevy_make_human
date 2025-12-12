@@ -40,16 +40,6 @@ impl Default for CameraFree {
     }
 }
 
-impl CameraFree {
-    pub fn new(base: f32) -> Self {
-        Self {
-            normal_speed: base,
-            sprint_speed: base * 2.0,
-            crawl_speed: base * 0.5,
-        }
-    }
-}
-
 fn on_insert_camera(
     trigger: On<Insert, CameraFree>,
     query: Query<&CameraFree>,

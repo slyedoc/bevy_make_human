@@ -1,13 +1,12 @@
 #[path ="common/mod.rs"]
 mod common;
-use std::{any::TypeId, f32::consts::PI};
-
-pub use common::*;
+use common::*;
 
 use bevy::{animation::{AnimationTargetId, animated_field}, platform::collections::HashMap, prelude::*};
 use avian3d::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_make_human::prelude::*;
+use std::{any::TypeId, f32::consts::PI};
 
 fn main() -> AppExit {
     App::new()
@@ -15,13 +14,18 @@ fn main() -> AppExit {
             DefaultPlugins,
             PhysicsPlugins::default(),
             MakeHumanPlugin::default(),
-            CommonPlugin, // camera and egui editor
+            CommonPlugin, // camera controls, egui, mipmaps, skinned AABB
         ))
-        .init_collection::<GltfAnimationAssets>()
+        .init_collection::<MixamoAnimations>()
         .add_systems(Startup, setup)
         .run()
 }
 
+#[derive(AssetCollection, Resource)]
+struct MixamoAnimations {
+    #[asset(path = "animations/mixamo/Warrior Idle.glb")]
+    pub warrior_idle: Handle<Gltf>,   
+}
 
 fn setup(
     mut commands: Commands,
@@ -60,32 +64,21 @@ fn setup(
         SkinMesh::MaleGeneric,
         SkinMaterial::YoungCaucasianMale,
         Eyes::LowPolyBluegreen,
-        //Hair::Bob02,
+        Hair::CulturalibreHair02,
         Eyebrows::Eyebrow006,
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
         Clothing(vec![
-            ClothingAsset::ToigoMaleSuit3,
-            ClothingAsset::ToigoAnkleBootsMale,
+             ClothingAsset::ToigoMaleSuit3,
+             ClothingAsset::ToigoAnkleBootsMale,
         ]),
         Morphs(vec![
             Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
         ]),
         Transform::from_xyz(0.0, 0.0, 0.0),
-    )) .observe(apply_gltf_animation);
-}
-
-
-#[derive(AssetCollection, Resource)]
-struct GltfAnimationAssets {
-    #[asset(path = "animations/gltf/main_skeleton.glb")]
-    pub _main_skeleton: Handle<Gltf>,
-    #[asset(path = "animations/gltf/Breathing Idle.glb")]
-    pub breathing_idle: Handle<Gltf>,
-    /// MH-compatible skeleton from Humentity - bind poses match MH mesh
-    #[asset(path = "animations/gltf/mixamo_skeleton.glb")]
-    pub _mixamo_skeleton: Handle<Gltf>,
+    ))
+    .observe(apply_gltf_animation);
 }
 
 #[allow(dead_code)]
@@ -93,7 +86,7 @@ fn apply_gltf_animation(
     trigger: On<HumanComplete>,
     mut human_query: Query<(&Rig, &mut Skeleton), With<Human>>,
     mut commands: Commands,
-    assets: Res<GltfAnimationAssets>,
+    assets: Res<MixamoAnimations>,
     gltfs: Res<Assets<Gltf>>,
     gltf_nodes: Res<Assets<bevy::gltf::GltfNode>>,    
     children_query: Query<&Children>,
@@ -111,7 +104,7 @@ fn apply_gltf_animation(
     }
     
     // Get the GLTF asset
-    let gltf = gltfs.get(&assets.breathing_idle).unwrap();
+    let gltf = gltfs.get(&assets.warrior_idle).unwrap();
     if gltf.animations.is_empty() {
         warn!("No animations in GLTF");
         return;
