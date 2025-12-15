@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MakeHuman to ARKit Blend Shape Mapping Tool
+claude's idea for converting MakeHuman face shapes
 
 Converts MakeHuman raw face shapes to ARKit 52 blend shapes.
 Some shapes require combining multiple MH shapes, others need to be created.
