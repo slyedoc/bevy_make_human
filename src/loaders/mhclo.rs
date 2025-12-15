@@ -7,7 +7,7 @@
 //! - x,y,z: position offsets
 
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader},
     prelude::*,
 };
 use std::io::{BufRead, BufReader};
@@ -114,7 +114,12 @@ impl AssetLoader for MhcloLoader {
 
                     // Detect special "direct vertex with offset" format: v0 0 1 1.0 0.0 0.0 x y z
                     // v1=0, v2=1 are dummy placeholders, v0 is actual base mesh index
-                    if v1 == 0 && v2 == 1 && (w0 - 1.0).abs() < 0.001 && w1.abs() < 0.001 && w2.abs() < 0.001 {
+                    if v1 == 0
+                        && v2 == 1
+                        && (w0 - 1.0).abs() < 0.001
+                        && w1.abs() < 0.001
+                        && w2.abs() < 0.001
+                    {
                         asset.bindings.push(VertexBinding {
                             triangle: [v0, v0, v0],
                             weights: [1.0, 0.0, 0.0],
@@ -252,7 +257,12 @@ impl MhcloAsset {
 
     /// Compute final positions for asset vertices bound to base mesh (for clothing/eyes)
     /// `normal_offset` pushes verts outward along triangle normal (useful to prevent skin poke-through)
-    pub fn apply_to_base(&self, base_vertices: &[Vec3], asset_vertices: &mut [Vec3], normal_offset: f32) {
+    pub fn apply_to_base(
+        &self,
+        base_vertices: &[Vec3],
+        asset_vertices: &mut [Vec3],
+        normal_offset: f32,
+    ) {
         // MakeHuman uses decimeters, we scale to meters (0.1x) in obj loader
         const SCALE: f32 = 0.1;
 
@@ -327,7 +337,7 @@ impl MhcloAsset {
             let edge1 = v1 - v0;
             let edge2 = v2 - v0;
             let normal_push = edge1.cross(edge2).normalize_or_zero() * normal_offset;
-            
+
             asset_vertices[i] = pos + scaled_offset + normal_push;
         }
     }

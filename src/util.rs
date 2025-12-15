@@ -1,11 +1,13 @@
 //! Skinning weights loader - parses MakeHuman weight JSON files
 
-use bevy::{    
-    asset::RenderAssetUsages, mesh::{PrimitiveTopology, VertexAttributeValues}, platform::collections::HashMap, prelude::*
+use bevy::{
+    asset::RenderAssetUsages,
+    mesh::{PrimitiveTopology, VertexAttributeValues},
+    platform::collections::HashMap,
+    prelude::*,
 };
 
 use crate::{loaders::*, skeleton::Skeleton};
-
 
 /// Apply skinning weights to proxy mesh via barycentric interpolation
 /// Proxy vertices map to base mesh triangles, so we blend weights from 3 base verts
@@ -73,13 +75,20 @@ pub fn apply_skinning_weights_to_proxy(
     mesh
 }
 
-
 /// Average normals for vertices at the same position (fixes UV seam artifacts)
 fn average_normals_at_seams(mesh: &mut Mesh) {
-    let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION)
-        .and_then(|a| a.as_float3()) else { return };
-    let Some(normals) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL)
-        .and_then(|a| a.as_float3()) else { return };
+    let Some(positions) = mesh
+        .attribute(Mesh::ATTRIBUTE_POSITION)
+        .and_then(|a| a.as_float3())
+    else {
+        return;
+    };
+    let Some(normals) = mesh
+        .attribute(Mesh::ATTRIBUTE_NORMAL)
+        .and_then(|a| a.as_float3())
+    else {
+        return;
+    };
 
     // Group vertices by position (quantized to avoid float precision issues)
     let mut pos_to_indices: HashMap<[i32; 3], Vec<usize>> = HashMap::default();
@@ -96,7 +105,9 @@ fn average_normals_at_seams(mesh: &mut Mesh) {
     // Average normals for vertices at same position
     let mut new_normals: Vec<[f32; 3]> = normals.to_vec();
     for indices in pos_to_indices.values() {
-        if indices.len() <= 1 { continue; }
+        if indices.len() <= 1 {
+            continue;
+        }
 
         // Sum all normals at this position
         let mut sum = Vec3::ZERO;
@@ -215,7 +226,6 @@ pub fn apply_mhclo_fitting(
         // Get mesh verts
         let mesh_verts = get_vertex_positions(mesh);
 
-
         // Compute transformed verts from bindings (obj space)
         let mut transformed = vec![Vec3::ZERO; mhclo.bindings.len()];
         mhclo.apply_to_base(base_vertices, &mut transformed, normal_offset);
@@ -284,7 +294,10 @@ pub fn get_vertex_uvs(mesh: &Mesh) -> Vec<[f32; 2]> {
         .unwrap_or_default()
 }
 
-pub fn generate_vertex_map(obj_vertices: &[Vec3], mesh_vertices: &[Vec3]) -> HashMap<u16, Vec<u16>> {
+pub fn generate_vertex_map(
+    obj_vertices: &[Vec3],
+    mesh_vertices: &[Vec3],
+) -> HashMap<u16, Vec<u16>> {
     let mut vertex_map: HashMap<u16, Vec<u16>> = HashMap::default();
 
     for (mesh_idx, mesh_vert) in mesh_vertices.iter().enumerate() {
@@ -300,7 +313,6 @@ pub fn generate_vertex_map(obj_vertices: &[Vec3], mesh_vertices: &[Vec3]) -> Has
     }
     vertex_map
 }
-
 
 /// Apply skinning weights to accessory mesh via MHCLO bindings
 /// Uses mhid_lookup from fitting to map mesh verts -> obj verts -> helper weights
@@ -408,7 +420,8 @@ pub fn apply_morphed_base_mesh(
     // Add skinning weights - base mesh vertices map directly via mhid_lookup
     let max_weight_vertex = skinning_weights.max_vertex_index();
     let vertex_count = max_weight_vertex + 1;
-    let base_vertex_weights = skinning_weights.to_vertex_weights(&skeleton.bone_indices, vertex_count);
+    let base_vertex_weights =
+        skinning_weights.to_vertex_weights(&skeleton.bone_indices, vertex_count);
 
     let mut indices = vec![[0u16; 4]; mesh_vert_count];
     let mut weights = vec![[0.0f32; 4]; mesh_vert_count];
@@ -417,7 +430,11 @@ pub fn apply_morphed_base_mesh(
         let base_idx = obj_idx as usize;
         if base_idx < base_vertex_weights.len() {
             let bone_weights: Vec<_> = base_vertex_weights[base_idx].clone();
-            apply_top4_weights(&bone_weights, &mut indices[mesh_idx], &mut weights[mesh_idx]);
+            apply_top4_weights(
+                &bone_weights,
+                &mut indices[mesh_idx],
+                &mut weights[mesh_idx],
+            );
         } else {
             // Default to bone 0
             indices[mesh_idx][0] = 0;
@@ -478,7 +495,8 @@ pub fn transfer_weights_from_helpers(
     let mut vertex_weights = Vec::with_capacity(asset_vertices.len());
 
     // Convert helper weights to per-vertex format
-    let helper_vertex_weights = helper_weights.to_vertex_weights(bone_indices, morphed_helpers.len());
+    let helper_vertex_weights =
+        helper_weights.to_vertex_weights(bone_indices, morphed_helpers.len());
 
     for asset_vert in asset_vertices {
         // Find 3 closest helpers for interpolation
@@ -531,11 +549,7 @@ pub fn transfer_weights_from_helpers(
 }
 
 /// Find N closest helper vertices using distance
-fn find_closest_helpers(
-    point: &Vec3,
-    helpers: &[Vec3],
-    count: usize,
-) -> Vec<(usize, f32)> {
+fn find_closest_helpers(point: &Vec3, helpers: &[Vec3], count: usize) -> Vec<(usize, f32)> {
     // Calculate distances to all helpers
     let mut distances: Vec<(usize, f32)> = helpers
         .iter()
@@ -570,7 +584,6 @@ fn find_closest_helpers(
         })
         .collect()
 }
-
 
 #[cfg(test)]
 mod tests {

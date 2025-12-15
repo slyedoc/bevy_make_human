@@ -1,63 +1,95 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
 // Common required files for parts with mhclo
 const COMMON_ITEMS: [&str; 4] = ["mhclo", "mhmat", "obj", "thumb"];
 
 // Parts that derive Component directly (used as components without wrappers)
-const COMPONENT_ENUMS: &[&str] = &["Hair", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Eyes", "SkinMesh", "SkinMaterial"];
+const COMPONENT_ENUMS: &[&str] = &[
+    "Hair",
+    "Eyebrows",
+    "Eyelashes",
+    "Teeth",
+    "Tongue",
+    "Eyes",
+    "SkinMesh",
+    "SkinMaterial",
+];
 
 fn main() -> io::Result<()> {
-    
     // for (key, value) in env::vars() {
     //     println!("cargo:warning=Env {}={}", key, value);
     // }
 
     let assets_dir = get_base_path().join("assets").join("make_human");
-    
-    println!("cargo:rerun-if-changed=build.rs");    
+
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={:?}", assets_dir.as_os_str());
-    
+
     if !assets_dir.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!("assets dir not found: {:?}", assets_dir),
         ));
     }
-    
+
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("assets.rs");
     let mut f = File::create(dest_path)?;
-    
+
     // Proxymeshes -> SkinMesh
-    generate_asset_enum(&mut f, &assets_dir, "proxymeshes", "SkinMesh", &AssetFilePattern {
-        required: &["obj", "proxy", "thumb"],
-        textures: &[],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "proxymeshes",
+        "SkinMesh",
+        &AssetFilePattern {
+            required: &["obj", "proxy", "thumb"],
+            textures: &[],
+        },
+    )?;
 
     // Rigs
     generate_rig_enum(&mut f, &assets_dir)?;
 
     // Skins -> SkinMaterial
-    generate_asset_enum(&mut f, &assets_dir, "skins", "SkinMaterial", &AssetFilePattern {
-        required: &["mhmat", "thumb"],
-        textures: &["diffuse", "normal", "specular"],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "skins",
+        "SkinMaterial",
+        &AssetFilePattern {
+            required: &["mhmat", "thumb"],
+            textures: &["diffuse", "normal", "specular"],
+        },
+    )?;
 
     // Generate enums for each asset type with specific file patterns
-    generate_asset_enum(&mut f, &assets_dir, "hair", "Hair", &AssetFilePattern {
-        required: &["mhclo", "mhmat", "obj", "thumb"],
-        textures: &["diffuse", "normal", "specular", "ao", "bump"],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "hair",
+        "Hair",
+        &AssetFilePattern {
+            required: &["mhclo", "mhmat", "obj", "thumb"],
+            textures: &["diffuse", "normal", "specular", "ao", "bump"],
+        },
+    )?;
 
     // Clothing
-    generate_asset_enum(&mut f, &assets_dir, "clothes", "ClothingAsset", &AssetFilePattern {
-        required: &["mhclo", "mhmat", "obj", "thumb"],
-        textures: &["diffuse", "normal", "specular", "ao", "bump"],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "clothes",
+        "ClothingAsset",
+        &AssetFilePattern {
+            required: &["mhclo", "mhmat", "obj", "thumb"],
+            textures: &["diffuse", "normal", "specular", "ao", "bump"],
+        },
+    )?;
 
     // TODO: testing different way, its the only specify asset here that
     // supports different meshes
@@ -65,28 +97,52 @@ fn main() -> io::Result<()> {
     generate_eyes_enum(&mut f, &assets_dir)?;
 
     // Eyebrows - Component enum
-    generate_asset_enum(&mut f, &assets_dir, "eyebrows", "Eyebrows", &AssetFilePattern {
-        required: &COMMON_ITEMS,
-        textures: &[],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "eyebrows",
+        "Eyebrows",
+        &AssetFilePattern {
+            required: &COMMON_ITEMS,
+            textures: &[],
+        },
+    )?;
 
     // Eyelashes - Component enum
-    generate_asset_enum(&mut f, &assets_dir, "eyelashes", "Eyelashes", &AssetFilePattern {
-        required: &COMMON_ITEMS,
-        textures: &[],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "eyelashes",
+        "Eyelashes",
+        &AssetFilePattern {
+            required: &COMMON_ITEMS,
+            textures: &[],
+        },
+    )?;
 
     // Teeth - Component enum
-    generate_asset_enum(&mut f, &assets_dir, "teeth", "Teeth", &AssetFilePattern {
-        required: &COMMON_ITEMS,
-        textures: &[],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "teeth",
+        "Teeth",
+        &AssetFilePattern {
+            required: &COMMON_ITEMS,
+            textures: &[],
+        },
+    )?;
 
     // Tongue - Component enum
-    generate_asset_enum(&mut f, &assets_dir, "tongue", "Tongue", &AssetFilePattern {
-        required: &COMMON_ITEMS,
-        textures: &[],
-    })?;
+    generate_asset_enum(
+        &mut f,
+        &assets_dir,
+        "tongue",
+        "Tongue",
+        &AssetFilePattern {
+            required: &COMMON_ITEMS,
+            textures: &[],
+        },
+    )?;
 
     // Poses - BVH files for static poses
     generate_pose_enum(&mut f, &assets_dir)?;
@@ -94,14 +150,15 @@ fn main() -> io::Result<()> {
     // Morph targets - read from target.json
     generate_morph_enums(&mut f, &assets_dir)?;
 
-    // Expression targets - for facial animation (ARKit compatible)
-    generate_expression_enum(&mut f, &assets_dir)?;
-
     // MacroMorphs - scanned from macrodetails, breast, height, proportions folders
     generate_macro_morphs(&mut f, &assets_dir)?;
 
     // MHPart trait for generic part handling
     generate_mhpart_trait(&mut f)?;
+
+    // TODO: not used yet
+    // Expression targets - for facial animation (ARKit compatible)
+    generate_expression_enum(&mut f, &assets_dir)?;
 
     Ok(())
 }
@@ -120,7 +177,7 @@ pub(crate) fn get_base_path() -> PathBuf {
 }
 
 struct AssetFilePattern {
-    required: &'static [&'static str],    
+    required: &'static [&'static str],
     textures: &'static [&'static str],
 }
 
@@ -144,18 +201,18 @@ fn generate_asset_enum(
         .filter(|e| e.path().is_dir())
         .collect();
 
-    entries.sort_by(|a, b| {
-        a.path()
-            .file_name()
-            .cmp(&b.path().file_name())
-    });
+    entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
     // Write enum with strum derives including EnumProperty
     // Add Component derive for types used directly as components
     let is_component = COMPONENT_ENUMS.contains(&enum_name);
     let component_derive = if is_component { "Component, " } else { "" };
     writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
-    writeln!(f, "#[derive({}Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]", component_derive)?;
+    writeln!(
+        f,
+        "#[derive({}Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]",
+        component_derive
+    )?;
     writeln!(f, "pub enum {} {{", enum_name)?;
 
     let mut first = true;
@@ -166,7 +223,9 @@ fn generate_asset_enum(
 
         // Check if this directory has at least one required file
         let has_required = pattern.required.iter().any(|file_type| {
-            asset_dir.join(format!("{}.{}", dir_name_str, file_type)).exists()
+            asset_dir
+                .join(format!("{}.{}", dir_name_str, file_type))
+                .exists()
         });
 
         if !has_required {
@@ -184,16 +243,15 @@ fn generate_asset_enum(
 
             // Fallback: search for ANY file with this extension in the directory
             if !file_path.exists() {
-                let found = fs::read_dir(&asset_dir).ok()
-                    .and_then(|entries| {
-                        entries.filter_map(|e| e.ok())
-                            .find(|e| {
-                                e.path().extension()
-                                    .and_then(|ext| ext.to_str())
-                                    .map(|ext| ext == *file_type)
-                                    .unwrap_or(false)
-                            })
-                    });
+                let found = fs::read_dir(&asset_dir).ok().and_then(|entries| {
+                    entries.filter_map(|e| e.ok()).find(|e| {
+                        e.path()
+                            .extension()
+                            .and_then(|ext| ext.to_str())
+                            .map(|ext| ext == *file_type)
+                            .unwrap_or(false)
+                    })
+                });
 
                 if let Some(found_entry) = found {
                     file_path = found_entry.path();
@@ -215,7 +273,10 @@ fn generate_asset_enum(
         for texture_type in pattern.textures {
             let file_path = asset_dir.join(format!("{}_{}.png", dir_name_str, texture_type));
             if file_path.exists() {
-                let png_path = format!("make_human/{}/{}/{}_{}.png", subdir, dir_name_str, dir_name_str, texture_type);
+                let png_path = format!(
+                    "make_human/{}/{}/{}_{}.png",
+                    subdir, dir_name_str, dir_name_str, texture_type
+                );
                 props.push(format!("{} = \"{}\"", texture_type, png_path));
             }
         }
@@ -226,7 +287,8 @@ fn generate_asset_enum(
             let obj_path = asset_dir.join(format!("{}.obj", dir_name_str));
             if obj_path.exists() {
                 if let Ok(content) = fs::read_to_string(&obj_path) {
-                    let vert_count = content.lines()
+                    let vert_count = content
+                        .lines()
                         .filter(|line| line.starts_with("v "))
                         .count();
                     format!(" ({} verts)", vert_count)
@@ -253,13 +315,24 @@ fn generate_asset_enum(
     writeln!(f)?;
 
     // Enums that implement MHPart trait - skip generating accessors covered by trait
-    const MHPART_ENUMS: &[&str] = &["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
+    const MHPART_ENUMS: &[&str] = &[
+        "Eyes",
+        "Eyebrows",
+        "Eyelashes",
+        "Teeth",
+        "Tongue",
+        "Hair",
+        "ClothingAsset",
+    ];
     const MHPART_METHODS: &[&str] = &["mhclo", "mhmat", "obj", "thumb"];
     let is_mhpart = MHPART_ENUMS.contains(&enum_name);
 
     // Generate helper methods using EnumProperty
     // Skip methods covered by MHPart trait
-    let has_non_trait_methods = pattern.required.iter().any(|f| !is_mhpart || !MHPART_METHODS.contains(f))
+    let has_non_trait_methods = pattern
+        .required
+        .iter()
+        .any(|f| !is_mhpart || !MHPART_METHODS.contains(f))
         || !pattern.textures.is_empty();
 
     if has_non_trait_methods {
@@ -281,7 +354,11 @@ fn generate_asset_enum(
         // Texture accessors
         for texture_type in pattern.textures {
             writeln!(f, "    /// Get {} texture path if available", texture_type)?;
-            writeln!(f, "    pub fn {}_texture(&self) -> Option<&'static str> {{", texture_type)?;
+            writeln!(
+                f,
+                "    pub fn {}_texture(&self) -> Option<&'static str> {{",
+                texture_type
+            )?;
             writeln!(f, "        use strum::EnumProperty;")?;
             writeln!(f, "        self.get_str(\"{}\")", texture_type)?;
             writeln!(f, "    }}")?;
@@ -341,8 +418,14 @@ fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     materials.sort_by(|a, b| a.0.cmp(&b.0));
 
     // Generate cross-product enum
-    writeln!(f, "/// Generated from assets/make_human/eyes (mesh × material cross-product)")?;
-    writeln!(f, "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(
+        f,
+        "/// Generated from assets/make_human/eyes (mesh × material cross-product)"
+    )?;
+    writeln!(
+        f,
+        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+    )?;
     writeln!(f, "pub enum Eyes {{")?;
 
     let mut first = true;
@@ -403,7 +486,10 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
     writeln!(f, "/// Generated from assets/make_human/poses")?;
-    writeln!(f, "#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(
+        f,
+        "#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+    )?;
     writeln!(f, "pub enum PoseAsset {{")?;
 
     let mut first = true;
@@ -419,7 +505,11 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
             writeln!(f, "    #[default]")?;
             first = false;
         }
-        writeln!(f, "    #[strum(props(bvh = \"{}\", thumb = \"{}\"))]", bvh_path, thumb_path)?;
+        writeln!(
+            f,
+            "    #[strum(props(bvh = \"{}\", thumb = \"{}\"))]",
+            bvh_path, thumb_path
+        )?;
         writeln!(f, "    {},", variant_name)?;
     }
 
@@ -458,7 +548,10 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     entries.sort_by(|a, b| a.path().file_name().cmp(&b.path().file_name()));
 
-    writeln!(f, "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+    writeln!(
+        f,
+        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+    )?;
     writeln!(f, "pub enum Rig {{")?;
 
     let mut first = true;
@@ -484,8 +577,14 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         }
         let mut props = Vec::new();
 
-        props.push(format!("rig_json = \"make_human/rigs/{}/{}.rig.json\"", dir_name_str, dir_name_str));
-        props.push(format!("weights = \"make_human/rigs/{}/{}.mhw\"", dir_name_str, dir_name_str));
+        props.push(format!(
+            "rig_json = \"make_human/rigs/{}/{}.rig.json\"",
+            dir_name_str, dir_name_str
+        ));
+        props.push(format!(
+            "weights = \"make_human/rigs/{}/{}.mhw\"",
+            dir_name_str, dir_name_str
+        ));
 
         writeln!(f, "    /// {}", dir_name_str)?;
         writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
@@ -533,30 +632,39 @@ fn sanitize_name(name: &str) -> String {
 /// Pair type determines which suffix means negative vs positive
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum PairType {
-    IncrDecr,       // neg=decr, pos=incr
-    UpDown,         // neg=down, pos=up
-    InOut,          // neg=in, pos=out
-    ForwardBackward,// neg=backward, pos=forward
-    ConvexConcave,  // neg=concave, pos=convex
+    IncrDecr,           // neg=decr, pos=incr
+    UpDown,             // neg=down, pos=up
+    InOut,              // neg=in, pos=out
+    ForwardBackward,    // neg=backward, pos=forward
+    ConvexConcave,      // neg=concave, pos=convex
     CompressUncompress, // neg=compress, pos=uncompress
-    SquareRound,    // neg=square, pos=round
-    PointedTriangle,// neg=pointed, pos=triangle
-    Single,         // only one target (0..1 range)
+    SquareRound,        // neg=square, pos=round
+    PointedTriangle,    // neg=pointed, pos=triangle
+    Single,             // only one target (0..1 range)
 }
 
 impl PairType {
     fn from_label(label: &str) -> Self {
-        if label.ends_with("-decr-incr") { Self::IncrDecr }
-        else if label.ends_with("-down-up") { Self::UpDown }
-        else if label.ends_with("-in-out") { Self::InOut }
-        else if label.ends_with("-backward-forward") { Self::ForwardBackward }
-        else if label.ends_with("-concave-convex") || label.ends_with("-convex-concave") { Self::ConvexConcave }
-        else if label.ends_with("-compress-uncompress") { Self::CompressUncompress }
-        else if label.ends_with("-square-round") { Self::SquareRound }
-        else if label.ends_with("-pointed-triangle") { Self::PointedTriangle }
-        else { Self::Single }
+        if label.ends_with("-decr-incr") {
+            Self::IncrDecr
+        } else if label.ends_with("-down-up") {
+            Self::UpDown
+        } else if label.ends_with("-in-out") {
+            Self::InOut
+        } else if label.ends_with("-backward-forward") {
+            Self::ForwardBackward
+        } else if label.ends_with("-concave-convex") || label.ends_with("-convex-concave") {
+            Self::ConvexConcave
+        } else if label.ends_with("-compress-uncompress") {
+            Self::CompressUncompress
+        } else if label.ends_with("-square-round") {
+            Self::SquareRound
+        } else if label.ends_with("-pointed-triangle") {
+            Self::PointedTriangle
+        } else {
+            Self::Single
+        }
     }
-
 }
 
 /// Represents a morph (binary pair or single)
@@ -576,13 +684,13 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Read target.json to get categories
     let target_json_path = assets_dir.join("targets/target.json");
     let json_str = fs::read_to_string(&target_json_path)?;
-    let json: serde_json::Value = serde_json::from_str(&json_str)
-        .expect("Failed to parse target.json");
+    let json: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse target.json");
 
-    let categories = json.as_object()
-        .expect("target.json must be object");
+    let categories = json.as_object().expect("target.json must be object");
 
-    let mut category_names: Vec<String> = categories.keys()
+    let mut category_names: Vec<String> = categories
+        .keys()
         .filter(|k| *k != "measure") // skip measure category
         .cloned()
         .collect();
@@ -616,7 +724,10 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
                                         name: target_name.to_string(),
                                         pair_type: PairType::Single,
                                         neg_path: None,
-                                        pos_path: Some(format!("make_human/targets/{}/{}.target", category, target_name)),
+                                        pos_path: Some(format!(
+                                            "make_human/targets/{}/{}.target",
+                                            category, target_name
+                                        )),
                                     });
                                 }
                             }
@@ -624,12 +735,30 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
                     }
                 } else if let Some(opp) = opposites.and_then(|v| v.as_object()) {
                     // Binary pair with opposites
-                    let pos_left = opp.get("positive-left").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-                    let neg_left = opp.get("negative-left").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-                    let pos_right = opp.get("positive-right").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-                    let neg_right = opp.get("negative-right").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-                    let pos_unsided = opp.get("positive-unsided").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
-                    let neg_unsided = opp.get("negative-unsided").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+                    let pos_left = opp
+                        .get("positive-left")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
+                    let neg_left = opp
+                        .get("negative-left")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
+                    let pos_right = opp
+                        .get("positive-right")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
+                    let neg_right = opp
+                        .get("negative-right")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
+                    let pos_unsided = opp
+                        .get("positive-unsided")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
+                    let neg_unsided = opp
+                        .get("negative-unsided")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty());
 
                     // Left side - use suffix L
                     if pos_left.is_some() || neg_left.is_some() {
@@ -640,8 +769,12 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
                             entries.push(MorphEntry {
                                 name: sided_name,
                                 pair_type,
-                                neg_path: neg_left.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
-                                pos_path: pos_left.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
+                                neg_path: neg_left.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
+                                pos_path: pos_left.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
                             });
                         }
                     }
@@ -655,22 +788,31 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
                             entries.push(MorphEntry {
                                 name: sided_name,
                                 pair_type,
-                                neg_path: neg_right.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
-                                pos_path: pos_right.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
+                                neg_path: neg_right.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
+                                pos_path: pos_right.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
                             });
                         }
                     }
 
                     // Unsided
                     if pos_unsided.is_some() || neg_unsided.is_some() {
-                        let base = extract_base_name(pos_unsided.or(neg_unsided).unwrap(), pair_type);
+                        let base =
+                            extract_base_name(pos_unsided.or(neg_unsided).unwrap(), pair_type);
                         if !seen_bases.contains(&base) {
                             seen_bases.insert(base.clone());
                             entries.push(MorphEntry {
                                 name: base,
                                 pair_type,
-                                neg_path: neg_unsided.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
-                                pos_path: pos_unsided.map(|t| format!("make_human/targets/{}/{}.target", category, t)),
+                                neg_path: neg_unsided.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
+                                pos_path: pos_unsided.map(|t| {
+                                    format!("make_human/targets/{}/{}.target", category, t)
+                                }),
                             });
                         }
                     }
@@ -695,7 +837,10 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "/// Generated from target.json category: {}", category)?;
         writeln!(f, "/// Binary pairs: -1.0 to 1.0 (neg/pos targets)")?;
         writeln!(f, "/// Singles: 0.0 to 1.0 (one target)")?;
-        writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]")?;
+        writeln!(
+            f,
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+        )?;
         writeln!(f, "pub enum {} {{", enum_name)?;
 
         for entry in entries {
@@ -712,7 +857,11 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
                 props.push("single = \"true\"".to_string());
             }
 
-            let range = if entry.pair_type == PairType::Single { "0.0 to 1.0" } else { "-1.0 to 1.0" };
+            let range = if entry.pair_type == PairType::Single {
+                "0.0 to 1.0"
+            } else {
+                "-1.0 to 1.0"
+            };
             writeln!(f, "    /// {} ({})", entry.name, range)?;
             if !props.is_empty() {
                 writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
@@ -735,21 +884,36 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "        self.get_str(\"neg\")")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
-        writeln!(f, "    /// Check if this is a single (0..1) vs binary (-1..1)")?;
+        writeln!(
+            f,
+            "    /// Check if this is a single (0..1) vs binary (-1..1)"
+        )?;
         writeln!(f, "    pub fn is_single(&self) -> bool {{")?;
         writeln!(f, "        self.get_str(\"single\").is_some()")?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
         writeln!(f, "    /// Get target path based on sign of value")?;
         writeln!(f, "    /// For singles, always returns pos_path")?;
-        writeln!(f, "    /// For binary, neg value -> neg_path, pos value -> pos_path")?;
-        writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{")?;
-        writeln!(f, "        if self.is_single() || value >= 0.0 {{ self.pos_path() }} else {{ self.neg_path() }}")?;
+        writeln!(
+            f,
+            "    /// For binary, neg value -> neg_path, pos value -> pos_path"
+        )?;
+        writeln!(
+            f,
+            "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{"
+        )?;
+        writeln!(
+            f,
+            "        if self.is_single() || value >= 0.0 {{ self.pos_path() }} else {{ self.neg_path() }}"
+        )?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
         writeln!(f, "    /// Get valid value range: (min, max)")?;
         writeln!(f, "    pub fn value_range(&self) -> (f32, f32) {{")?;
-        writeln!(f, "        if self.is_single() {{ (0.0, 1.0) }} else {{ (-1.0, 1.0) }}")?;
+        writeln!(
+            f,
+            "        if self.is_single() {{ (0.0, 1.0) }} else {{ (-1.0, 1.0) }}"
+        )?;
         writeln!(f, "    }}")?;
         writeln!(f)?;
         writeln!(f, "}}")?;
@@ -759,8 +923,14 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Generate unified MorphTarget enum
     writeln!(f, "/// Unified morph target enum containing all categories")?;
     writeln!(f, "/// Binary pairs: -1.0 to 1.0, Singles: 0.0 to 1.0")?;
-    writeln!(f, "/// Macro morphs: 0.0 to 1.0 (macrodetails, height, proportions, breast)")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]")?;
+    writeln!(
+        f,
+        "/// Macro morphs: 0.0 to 1.0 (macrodetails, height, proportions, breast)"
+    )?;
+    writeln!(
+        f,
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]"
+    )?;
     writeln!(f, "pub enum MorphTarget {{")?;
 
     for category in &category_names {
@@ -773,16 +943,28 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "    {}({}),", variant, enum_name)?;
     }
     // Add Macro variant for macro morphs
-    writeln!(f, "    /// Macro morphs (macrodetails, height, proportions, breast)")?;
+    writeln!(
+        f,
+        "    /// Macro morphs (macrodetails, height, proportions, breast)"
+    )?;
     writeln!(f, "    Macro(MacroMorph),")?;
 
     writeln!(f, "}}")?;
     writeln!(f)?;
 
     writeln!(f, "impl MorphTarget {{")?;
-    writeln!(f, "    /// Get target path based on sign of value (for simple morphs)")?;
-    writeln!(f, "    /// For simple macro morphs returns avg path, for interpolated returns None")?;
-    writeln!(f, "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{")?;
+    writeln!(
+        f,
+        "    /// Get target path based on sign of value (for simple morphs)"
+    )?;
+    writeln!(
+        f,
+        "    /// For simple macro morphs returns avg path, for interpolated returns None"
+    )?;
+    writeln!(
+        f,
+        "    pub fn target_path(&self, value: f32) -> Option<&'static str> {{"
+    )?;
     writeln!(f, "        match self {{")?;
 
     for category in &category_names {
@@ -791,19 +973,32 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
             continue;
         }
         let variant = sanitize_name(category);
-        writeln!(f, "            Self::{}(m) => m.target_path(value),", variant)?;
+        writeln!(
+            f,
+            "            Self::{}(m) => m.target_path(value),",
+            variant
+        )?;
     }
     writeln!(f, "            Self::Macro(m) => {{")?;
-    writeln!(f, "                if m.is_interpolated() {{ None }} else {{ m.paths().1 }}")?;
+    writeln!(
+        f,
+        "                if m.is_interpolated() {{ None }} else {{ m.paths().1 }}"
+    )?;
     writeln!(f, "            }}")?;
 
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get interpolation paths for macro morphs (min, avg, max)")?;
+    writeln!(
+        f,
+        "    /// Get interpolation paths for macro morphs (min, avg, max)"
+    )?;
     writeln!(f, "    /// Returns None for body morphs")?;
-    writeln!(f, "    pub fn macro_paths(&self) -> Option<(Option<&'static str>, Option<&'static str>, Option<&'static str>)> {{")?;
+    writeln!(
+        f,
+        "    pub fn macro_paths(&self) -> Option<(Option<&'static str>, Option<&'static str>, Option<&'static str>)> {{"
+    )?;
     writeln!(f, "        match self {{")?;
     writeln!(f, "            Self::Macro(m) => Some(m.paths()),")?;
     writeln!(f, "            _ => None,")?;
@@ -838,7 +1033,10 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get negative target path (None for macro morphs)")?;
+    writeln!(
+        f,
+        "    /// Get negative target path (None for macro morphs)"
+    )?;
     writeln!(f, "    pub fn neg_path(&self) -> Option<&'static str> {{")?;
     writeln!(f, "        match self {{")?;
 
@@ -856,7 +1054,10 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Check if this is a single (0..1) vs binary (-1..1)")?;
+    writeln!(
+        f,
+        "    /// Check if this is a single (0..1) vs binary (-1..1)"
+    )?;
     writeln!(f, "    /// Macro morphs are always single")?;
     writeln!(f, "    pub fn is_single(&self) -> bool {{")?;
     writeln!(f, "        match self {{")?;
@@ -894,7 +1095,10 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f)?;
 
     // Add iter() method that collects all variants from sub-enums
-    writeln!(f, "    /// Iterate over all morph targets across all categories")?;
+    writeln!(
+        f,
+        "    /// Iterate over all morph targets across all categories"
+    )?;
     writeln!(f, "    pub fn iter() -> impl Iterator<Item = Self> {{")?;
     writeln!(f, "        use strum::IntoEnumIterator;")?;
     writeln!(f, "        std::iter::empty()")?;
@@ -905,7 +1109,11 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         }
         let variant = sanitize_name(category);
         let enum_name = format!("{}Morph", variant);
-        writeln!(f, "            .chain({}::iter().map(Self::{}))", enum_name, variant)?;
+        writeln!(
+            f,
+            "            .chain({}::iter().map(Self::{}))",
+            enum_name, variant
+        )?;
     }
     writeln!(f, "            .chain(MacroMorph::iter().map(Self::Macro))")?;
     writeln!(f, "    }}")?;
@@ -993,13 +1201,19 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // Verify the targets exist
     let expr_dir = assets_dir.join("targets/expression/units/caucasian");
     if !expr_dir.exists() {
-        println!("cargo:warning=Expression targets directory not found: {:?}", expr_dir);
+        println!(
+            "cargo:warning=Expression targets directory not found: {:?}",
+            expr_dir
+        );
         return Ok(());
     }
 
     // Ethnicity enum for expression targets
     writeln!(f, "/// Ethnicity for expression targets")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect)]")?;
+    writeln!(
+        f,
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect)]"
+    )?;
     writeln!(f, "pub enum Ethnicity {{")?;
     writeln!(f, "    #[default]")?;
     writeln!(f, "    Caucasian,")?;
@@ -1021,8 +1235,14 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     writeln!(f, "/// Expression targets for facial animation")?;
     writeln!(f, "/// All values are 0.0 to 1.0 (single-sided morphs)")?;
-    writeln!(f, "/// Use with Ethnicity to get ethnicity-specific target path")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, Reflect)]")?;
+    writeln!(
+        f,
+        "/// Use with Ethnicity to get ethnicity-specific target path"
+    )?;
+    writeln!(
+        f,
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, Reflect)]"
+    )?;
     writeln!(f, "pub enum Expression {{")?;
 
     for target in EXPRESSION_TARGETS {
@@ -1038,7 +1258,10 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "impl Expression {{")?;
 
     // Get target name
-    writeln!(f, "    /// Get the target file name (without path or extension)")?;
+    writeln!(
+        f,
+        "    /// Get the target file name (without path or extension)"
+    )?;
     writeln!(f, "    pub fn target_name(&self) -> &'static str {{")?;
     writeln!(f, "        match self {{")?;
     for target in EXPRESSION_TARGETS {
@@ -1050,20 +1273,39 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f)?;
 
     // Get target path for a specific ethnicity
-    writeln!(f, "    /// Get the full asset path for this expression target")?;
-    writeln!(f, "    /// Uses the specified ethnicity for ethnicity-specific morphs")?;
-    writeln!(f, "    pub fn target_path(&self, ethnicity: Ethnicity) -> String {{")?;
-    writeln!(f, "        format!(\"make_human/targets/expression/units/{{}}/{{}}.target\", ethnicity.as_str(), self.target_name())")?;
+    writeln!(
+        f,
+        "    /// Get the full asset path for this expression target"
+    )?;
+    writeln!(
+        f,
+        "    /// Uses the specified ethnicity for ethnicity-specific morphs"
+    )?;
+    writeln!(
+        f,
+        "    pub fn target_path(&self, ethnicity: Ethnicity) -> String {{"
+    )?;
+    writeln!(
+        f,
+        "        format!(\"make_human/targets/expression/units/{{}}/{{}}.target\", ethnicity.as_str(), self.target_name())"
+    )?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
     // Get target path with default caucasian
-    writeln!(f, "    /// Get the asset path using caucasian variant (default)")?;
+    writeln!(
+        f,
+        "    /// Get the asset path using caucasian variant (default)"
+    )?;
     writeln!(f, "    pub fn default_path(&self) -> &'static str {{")?;
     writeln!(f, "        match self {{")?;
     for target in EXPRESSION_TARGETS {
         let variant = sanitize_name(target);
-        writeln!(f, "            Self::{} => \"make_human/targets/expression/units/caucasian/{}.target\",", variant, target)?;
+        writeln!(
+            f,
+            "            Self::{} => \"make_human/targets/expression/units/caucasian/{}.target\",",
+            variant, target
+        )?;
     }
     writeln!(f, "        }}")?;
     writeln!(f, "    }}")?;
@@ -1116,8 +1358,10 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     ];
 
     // Group files by base name for interpolation
-    let mut interp_groups: std::collections::HashMap<String, (Option<String>, Option<String>, Option<String>)> =
-        std::collections::HashMap::new();
+    let mut interp_groups: std::collections::HashMap<
+        String,
+        (Option<String>, Option<String>, Option<String>),
+    > = std::collections::HashMap::new();
     let mut singles: Vec<(String, String)> = Vec::new(); // (variant, path)
 
     for (folder, prefix) in &macro_folders {
@@ -1129,7 +1373,8 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         let entries: Vec<_> = fs::read_dir(&folder_path)?
             .filter_map(|e| e.ok())
             .filter(|e| {
-                e.path().extension()
+                e.path()
+                    .extension()
                     .and_then(|ext| ext.to_str())
                     .map(|ext| ext == "target")
                     .unwrap_or(false)
@@ -1196,10 +1441,16 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     all_morphs.sort_by(|a, b| a.variant.cmp(&b.variant));
 
     // Generate enum
-    writeln!(f, "/// Macro morph targets from macrodetails, height, proportions, breast folders")?;
+    writeln!(
+        f,
+        "/// Macro morph targets from macrodetails, height, proportions, breast folders"
+    )?;
     writeln!(f, "/// Single morphs: value 0-1 scales the morph")?;
     writeln!(f, "/// Interpolated morphs: value 0-1 blends min->avg->max")?;
-    writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Reflect)]")?;
+    writeln!(
+        f,
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Reflect)]"
+    )?;
     writeln!(f, "pub enum MacroMorph {{")?;
 
     for morph in &all_morphs {
@@ -1215,14 +1466,36 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     // paths() method - returns (min, avg, max) Option paths
     writeln!(f, "    /// Get interpolation paths (min, avg, max)")?;
     writeln!(f, "    /// Single morphs return (None, Some(path), None)")?;
-    writeln!(f, "    pub fn paths(&self) -> (Option<&'static str>, Option<&'static str>, Option<&'static str>) {{")?;
+    writeln!(
+        f,
+        "    pub fn paths(&self) -> (Option<&'static str>, Option<&'static str>, Option<&'static str>) {{"
+    )?;
     writeln!(f, "        match self {{")?;
 
     for morph in &all_morphs {
-        let min = morph.paths.0.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
-        let avg = morph.paths.1.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
-        let max = morph.paths.2.as_ref().map(|p| format!("Some(\"{}\")", p)).unwrap_or_else(|| "None".to_string());
-        writeln!(f, "            Self::{} => ({}, {}, {}),", morph.variant, min, avg, max)?;
+        let min = morph
+            .paths
+            .0
+            .as_ref()
+            .map(|p| format!("Some(\"{}\")", p))
+            .unwrap_or_else(|| "None".to_string());
+        let avg = morph
+            .paths
+            .1
+            .as_ref()
+            .map(|p| format!("Some(\"{}\")", p))
+            .unwrap_or_else(|| "None".to_string());
+        let max = morph
+            .paths
+            .2
+            .as_ref()
+            .map(|p| format!("Some(\"{}\")", p))
+            .unwrap_or_else(|| "None".to_string());
+        writeln!(
+            f,
+            "            Self::{} => ({}, {}, {}),",
+            morph.variant, min, avg, max
+        )?;
     }
 
     writeln!(f, "        }}")?;
@@ -1230,14 +1503,20 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f)?;
 
     // is_interpolated() method
-    writeln!(f, "    /// Check if this morph interpolates between multiple targets")?;
+    writeln!(
+        f,
+        "    /// Check if this morph interpolates between multiple targets"
+    )?;
     writeln!(f, "    pub fn is_interpolated(&self) -> bool {{")?;
     writeln!(f, "        let (min, _, max) = self.paths();")?;
     writeln!(f, "        min.is_some() || max.is_some()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
 
-    writeln!(f, "    /// Get valid value range (always 0.0 to 1.0 for macro morphs)")?;
+    writeln!(
+        f,
+        "    /// Get valid value range (always 0.0 to 1.0 for macro morphs)"
+    )?;
     writeln!(f, "    pub fn value_range(&self) -> (f32, f32) {{")?;
     writeln!(f, "        (0.0, 1.0)")?;
     writeln!(f, "    }}")?;
@@ -1247,7 +1526,10 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     // Display impl
     writeln!(f, "impl std::fmt::Display for MacroMorph {{")?;
-    writeln!(f, "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{")?;
+    writeln!(
+        f,
+        "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{"
+    )?;
     writeln!(f, "        write!(f, \"{{:?}}\", self)")?;
     writeln!(f, "    }}")?;
     writeln!(f, "}}")?;
@@ -1262,12 +1544,23 @@ fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
     let thumb_only = ["SkinMaterial", "SkinMesh"];
 
     // Enums with full MHPart (mhclo/mhmat/obj/thumb)
-    let full_parts = ["Eyes", "Eyebrows", "Eyelashes", "Teeth", "Tongue", "Hair", "ClothingAsset"];
+    let full_parts = [
+        "Eyes",
+        "Eyebrows",
+        "Eyelashes",
+        "Teeth",
+        "Tongue",
+        "Hair",
+        "ClothingAsset",
+    ];
 
     // Generate MHThumb for thumb-only enums
     for enum_name in thumb_only {
         writeln!(f, "impl MHThumb for {} {{", enum_name)?;
-        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
+        writeln!(
+            f,
+            "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}"
+        )?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }
@@ -1275,14 +1568,26 @@ fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
     // Generate MHThumb + MHPart for full part enums
     for enum_name in full_parts {
         writeln!(f, "impl MHThumb for {} {{", enum_name)?;
-        writeln!(f, "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}")?;
+        writeln!(
+            f,
+            "    fn thumb(&self) -> &'static str {{ self.get_str(\"thumb\").unwrap() }}"
+        )?;
         writeln!(f, "}}")?;
         writeln!(f)?;
 
         writeln!(f, "impl MHPart for {} {{", enum_name)?;
-        writeln!(f, "    fn mhclo(&self) -> &'static str {{ self.get_str(\"mhclo\").unwrap() }}")?;
-        writeln!(f, "    fn mhmat(&self) -> &'static str {{ self.get_str(\"mhmat\").unwrap() }}")?;
-        writeln!(f, "    fn obj(&self) -> &'static str {{ self.get_str(\"obj\").unwrap() }}")?;
+        writeln!(
+            f,
+            "    fn mhclo(&self) -> &'static str {{ self.get_str(\"mhclo\").unwrap() }}"
+        )?;
+        writeln!(
+            f,
+            "    fn mhmat(&self) -> &'static str {{ self.get_str(\"mhmat\").unwrap() }}"
+        )?;
+        writeln!(
+            f,
+            "    fn obj(&self) -> &'static str {{ self.get_str(\"obj\").unwrap() }}"
+        )?;
         writeln!(f, "}}")?;
         writeln!(f)?;
     }

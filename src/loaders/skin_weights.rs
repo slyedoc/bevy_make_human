@@ -1,9 +1,10 @@
 use bevy::{
-    asset::{AssetLoader, LoadContext, io::Reader}, platform::collections::HashMap, prelude::*
+    asset::{AssetLoader, LoadContext, io::Reader},
+    platform::collections::HashMap,
+    prelude::*,
 };
 use serde::Deserialize;
 use thiserror::Error;
-
 
 /// Skinning weights asset - maps bones to vertex weights
 #[derive(Asset, TypePath, Debug, Clone)]

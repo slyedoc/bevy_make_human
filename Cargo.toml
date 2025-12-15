@@ -48,10 +48,15 @@ required-features = []
 name = "feathers"
 required-features = ["feathers", "debug_draw"]
 
+[[example]]
+name = "arkit"
+required-features = []
+
 [dev-dependencies]
 bevy = { version = "0.17", features = [
     "bevy_dev_tools", # fps overlay
     "bevy_ui_debug", # ui debug
+    "wav", # audio support
 ] }
 avian3d = { version = "0.4", features = [
     "debug-plugin",

@@ -8,35 +8,36 @@ pub mod skeleton;
 pub mod ui;
 pub mod util;
 
-use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 pub use crate::assets::MHThumb;
+use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
     pub use crate::debug_draw::*;
 
     #[cfg(feature = "feathers")]
-    pub use crate::ui::{
-        dropdown::{DropdownOption, dropdown},
-        scroll::{ScrollProps, scroll},
-        text_input::{TextInputProps, text_input},
-    };
+    pub use crate::ui::human_editor;
 
     #[allow(unused_imports)]
     pub use crate::{
-        HumanComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*, skeleton::*,
-        util::*, MHThumb,
+        HumanComplete, MHState, MHThumb, MakeHumanPlugin, assets::*, components::*, loaders::*,
+        skeleton::*, util::*,
     };
 }
 
 use avian3d::prelude::*;
 use bevy::{
     animation::{AnimationTarget, AnimationTargetId},
-    mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
+    asset::RenderAssetUsages,
+    mesh::{
+        morph::{MeshMorphWeights, MorphAttributes, MorphTargetImage},
+        skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
+    },
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task, futures_lite::future},
 };
 use bevy_asset_loader::prelude::*;
+use strum::IntoEnumIterator;
 
 #[derive(Default, States, Debug, Clone, Eq, PartialEq, Hash, Reflect)]
 pub enum MHState {
@@ -265,6 +266,9 @@ struct HumanProcessingInput {
     parts: Vec<MHItemLoaded>,
 
     clothing_offset: f32,
+
+    /// ARKit blend shape targets (52 shapes)
+    arkit_targets: Vec<MorphTargetData>,
 }
 
 /// Result of human processing
@@ -275,6 +279,8 @@ struct HumanProcessingOutput {
     height: f32,
     /// Min Y of morphed vertices (for ground offset)
     min_y: f32,
+    /// ARKit morph deltas transferred to proxy mesh (52 x vertex_count)
+    arkit_morphs: Vec<Vec<Vec3>>,
 }
 
 fn human_changed(
@@ -329,6 +335,11 @@ fn human_changed(
             }
         }
 
+        // Load ARKit blend shape targets
+        let arkit_targets: Vec<Handle<MorphTargetData>> = ARKit::iter()
+            .map(|shape| asset_server.load(shape.target_path()))
+            .collect();
+
         commands
             .entity(h.entity)
             .remove::<HumanDirty>()
@@ -343,6 +354,7 @@ fn human_changed(
                 clothing_offset: h.clothing_offset.0,
                 parts,
                 morphs,
+                arkit_targets,
             });
     }
 }
@@ -385,6 +397,13 @@ fn loading_human_assets(
                 obj_base_assets.get(&assets.skin_obj_base).unwrap().clone(),
             );
 
+            // Extract ARKit targets
+            let arkit_targets: Vec<MorphTargetData> = assets
+                .arkit_targets
+                .iter()
+                .filter_map(|h| morph_target_assets.get(h).cloned())
+                .collect();
+
             // Extract for task
             let input = HumanProcessingInput {
                 base_vertices: base_mesh.vertices.clone(),
@@ -403,6 +422,7 @@ fn loading_human_assets(
                 skin_proxy,
                 clothing_offset: assets.clothing_offset,
                 parts,
+                arkit_targets,
             };
 
             // Spawn async task
@@ -493,11 +513,46 @@ fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
         });
     let height = max_y - min_y;
 
+    // Transfer ARKit morph targets through proxy
+    // For each morph target, transfer base mesh offsets through:
+    // mesh_vert_idx -> obj_vert_idx (mhid_lookup) -> proxy binding -> base mesh triangle -> morph offset
+    let arkit_morphs: Vec<Vec<Vec3>> = input
+        .arkit_targets
+        .iter()
+        .map(|morph_data| {
+            proxy_obj
+                .mhid_lookup
+                .iter()
+                .map(|&obj_idx| {
+                    let binding = &proxy_asset.bindings[obj_idx as usize];
+                    let d0 = morph_data
+                        .offsets
+                        .get(&binding.triangle[0])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    let d1 = morph_data
+                        .offsets
+                        .get(&binding.triangle[1])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    let d2 = morph_data
+                        .offsets
+                        .get(&binding.triangle[2])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    // Barycentric interpolation of offsets
+                    d0 * binding.weights[0] + d1 * binding.weights[1] + d2 * binding.weights[2]
+                })
+                .collect()
+        })
+        .collect();
+
     HumanProcessingOutput {
         skeleton,
         parts,
         height,
         min_y,
+        arkit_morphs,
     }
 }
 
@@ -512,6 +567,7 @@ fn update_human(
     )>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     for (entity, children_maybe, mut task, floor_offset) in query.iter_mut() {
         if let Some(HumanProcessingOutput {
@@ -519,6 +575,7 @@ fn update_human(
             parts,
             height,
             min_y,
+            arkit_morphs,
         }) = future::block_on(future::poll_once(&mut task.0))
         {
             commands
@@ -603,11 +660,41 @@ fn update_human(
             for a in parts.into_iter() {
                 match a.tag {
                     MHTag::Skin => {
-                        commands.entity(entity).insert((
-                            Mesh3d(meshes.add(a.mesh)),
+                        let mut mesh = a.mesh;
+
+                        // Build ARKit morph target image if we have morph data
+                        let morph_weights = if !arkit_morphs.is_empty() {
+                            let vertex_count = mesh.count_vertices();
+                            let targets_iter = arkit_morphs.iter().map(|mesh_offsets| {
+                                mesh_offsets.iter().map(|&offset| {
+                                    MorphAttributes::new(offset, Vec3::ZERO, Vec3::ZERO)
+                                })
+                            });
+
+                            if let Ok(morph_image) = MorphTargetImage::new(
+                                targets_iter,
+                                vertex_count,
+                                RenderAssetUsages::default(),
+                            ) {
+                                let morph_handle = images.add(morph_image.0);
+                                mesh.set_morph_targets(morph_handle);
+                                Some(MeshMorphWeights::new(vec![0.0; arkit_morphs.len()]).unwrap())
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                        let mut entity_commands = commands.entity(entity);
+                        entity_commands.insert((
+                            Mesh3d(meshes.add(mesh)),
                             MeshMaterial3d(a.mat),
                             skinned_mesh.clone(),
                         ));
+                        if let Some(weights) = morph_weights {
+                            entity_commands.insert(weights);
+                        }
                     }
                     _ => {
                         commands.spawn((

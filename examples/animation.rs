@@ -1,10 +1,14 @@
 #![allow(warnings)]
-#[path ="common/mod.rs"]
+#[path = "common/mod.rs"]
 mod common;
 use common::*;
 
-use bevy::{animation::{AnimationTargetId, animated_field}, platform::collections::HashMap, prelude::*};
 use avian3d::prelude::*;
+use bevy::{
+    animation::{AnimationTargetId, animated_field},
+    platform::collections::HashMap,
+    prelude::*,
+};
 use bevy_asset_loader::prelude::*;
 use bevy_make_human::prelude::*;
 use std::{any::TypeId, f32::consts::PI};
@@ -26,7 +30,7 @@ fn main() -> AppExit {
 #[derive(AssetCollection, Resource)]
 struct MixamoAnimations {
     #[asset(path = "animations/mixamo/Warrior Idle.glb")]
-    pub warrior_idle: Handle<Gltf>,   
+    pub warrior_idle: Handle<Gltf>,
 }
 
 fn setup(
@@ -59,28 +63,30 @@ fn setup(
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    commands.spawn((
-        Name::new("Bob"),
-        Human,
-        Rig::Mixamo,
-        SkinMesh::MaleGeneric,
-        SkinMaterial::YoungCaucasianMale,
-        Eyes::LowPolyBluegreen,
-        Hair::CulturalibreHair02,
-        Eyebrows::Eyebrow006,
-        Eyelashes::Eyelashes01,
-        Teeth::TeethBase,
-        Tongue::Tongue01,
-        Clothing(vec![
-             ClothingAsset::ToigoMaleSuit3,
-             ClothingAsset::ToigoAnkleBootsMale,
-        ]),
-        Morphs(vec![
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
-        ]),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-    ))
-    .observe(apply_gltf_animation);
+    commands
+        .spawn((
+            Name::new("Bob"),
+            Human,
+            Rig::Mixamo,
+            SkinMesh::MaleGeneric,
+            SkinMaterial::YoungCaucasianMale,
+            Eyes::LowPolyBluegreen,
+            Hair::CulturalibreHair02,
+            Eyebrows::Eyebrow006,
+            Eyelashes::Eyelashes01,
+            Teeth::TeethBase,
+            Tongue::Tongue01,
+            Clothing(vec![
+                ClothingAsset::ToigoMaleSuit3,
+                ClothingAsset::ToigoAnkleBootsMale,
+            ]),
+            Morphs(vec![Morph::new(
+                MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),
+                1.0,
+            )]),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+        ))
+        .observe(apply_gltf_animation);
 }
 
 #[allow(dead_code)]
@@ -90,21 +96,21 @@ fn apply_gltf_animation(
     mut commands: Commands,
     assets: Res<MixamoAnimations>,
     gltfs: Res<Assets<Gltf>>,
-    gltf_nodes: Res<Assets<bevy::gltf::GltfNode>>,    
+    gltf_nodes: Res<Assets<bevy::gltf::GltfNode>>,
     children_query: Query<&Children>,
     mut animation_player_query: Query<&mut AnimationPlayer, With<Armature>>,
     mut animation_clips: ResMut<Assets<AnimationClip>>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
-) {    
+) {
     // Get config and skeleton
-    let (rig, skeleton)  = human_query.get_mut(trigger.entity).unwrap();
+    let (rig, skeleton) = human_query.get_mut(trigger.entity).unwrap();
 
     // For Mixamo-compatible rigs, build direct mapping
     if rig != &Rig::Mixamo {
         error!("GLTF animation retargeting only implemented for Mixamo rigs right now");
         return;
     }
-    
+
     // Get the GLTF asset
     let gltf = gltfs.get(&assets.warrior_idle).unwrap();
     if gltf.animations.is_empty() {
@@ -239,7 +245,10 @@ fn apply_gltf_animation(
             }
         }
 
-        info!("Retargeted {} targets, {} unmapped, {} scale curves skipped", curves_copied, unmapped, scale_skipped);
+        info!(
+            "Retargeted {} targets, {} unmapped, {} scale curves skipped",
+            curves_copied, unmapped, scale_skipped
+        );
 
         if curves_copied > 0 {
             let new_handle = animation_clips.add(new_clip);
@@ -288,7 +297,6 @@ fn build_gltf_paths(
         build_gltf_paths(child_handle, &path, gltf_nodes, paths);
     }
 }
-
 
 //
 // Animations Tests

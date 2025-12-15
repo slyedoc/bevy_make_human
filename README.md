@@ -69,3 +69,36 @@ Rest of the code in this repository is dual-licensed under either:
 Code is licensed under MIT or Apache-2.0 at your option.
 
 > TODO: update animation license info
+
+
+## WIP: ARKit
+
+All 52 ARKit shapes now exist. 20 need manual sculpting:
+
+  Eyes (14) - need Blender sculpting
+
+  | Left               | Right               |
+  |--------------------|---------------------|
+  | eye-blink-left     | eye-blink-right     |
+  | eye-look-down-left | eye-look-down-right |
+  | eye-look-in-left   | eye-look-in-right   |
+  | eye-look-out-left  | eye-look-out-right  |
+  | eye-look-up-left   | eye-look-up-right   |
+  | eye-squint-left    | eye-squint-right    |
+  | eye-wide-left      | eye-wide-right      |
+
+  Jaw (3) - simple vertex translations
+
+  | Shape       | Description   |
+  |-------------|---------------|
+  | jaw-forward | chin moves +Z |
+  | jaw-left    | chin moves +X |
+  | jaw-right   | chin moves -X |
+
+  Mouth (3)
+
+  | Shape       | Description         |
+  |-------------|---------------------|
+  | mouth-close | lips press together |
+  | mouth-left  | mouth shifts left   |
+  | mouth-right | mouth shifts right  |

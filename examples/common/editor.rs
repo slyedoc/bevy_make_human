@@ -24,12 +24,12 @@ use bevy_egui::{EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiCont
 use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::{
     DefaultInspectorConfigPlugin,
-    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources}, quick::StateInspectorPlugin,
+    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources},
+    quick::StateInspectorPlugin,
 };
 #[allow(unused_imports)]
 use bevy_make_human::prelude::*;
 use std::ops::DerefMut;
-
 
 #[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub enum EditorState {
@@ -46,9 +46,7 @@ impl Plugin for EditorPlugin {
         app.add_plugins((
             EguiPlugin::default(),
             DefaultInspectorConfigPlugin,
-            StateInspectorPlugin::<MHState>::new()
-                .run_if(in_state(EditorState::Enabled)),
-            
+            StateInspectorPlugin::<MHState>::new().run_if(in_state(EditorState::Enabled)),
             PhysicsDebugPlugin,
             #[cfg(not(target_arch = "wasm32"))]
             WireframePlugin::default(),
@@ -83,29 +81,22 @@ impl Plugin for EditorPlugin {
             PreUpdate,
             (
                 toggle_editor.run_if(input_just_pressed(KeyCode::F1)),
-                (
-                    toggle_physics,
-                    toggle_lighting,
-                    toggle_picking_debug,
-                    
-                )
+                (toggle_physics, toggle_lighting, toggle_picking_debug)
                     .distributive_run_if(input_just_pressed(KeyCode::F2)),
                 (
                     toggle_ui_debug,
                     toggle_aabb,
                     #[cfg(not(target_arch = "wasm32"))]
                     toggle_wireframe,
-                    
                 )
-                    .distributive_run_if(input_just_pressed(KeyCode::F3)),                                            
-                toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),                
+                    .distributive_run_if(input_just_pressed(KeyCode::F3)),
+                toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),
                 #[cfg(feature = "debug_draw")]
-                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),                
+                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),
                 #[cfg(feature = "debug_draw")]
                 toggle_joint_axes.run_if(input_just_pressed(KeyCode::F6)),
             ),
         );
-        
     }
 
     fn finish(&self, app: &mut App) {
@@ -191,7 +182,7 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                         Or<(
                             With<UiTransform>,
                             With<PointerId>,
-                            With<Window>,                            
+                            With<Window>,
                             With<Monitor>,
                         )>,
                     )>(world, ui, &mut selected_entities);
@@ -200,9 +191,9 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                 egui::CollapsingHeader::new("Other").show(ui, |ui| {
                     bevy_inspector_egui::bevy_inspector::hierarchy::hierarchy_ui_filtered::<
                         Or<(
-                            With<BindingOf>,    // bevy_enhanced_input
+                            With<BindingOf>, // bevy_enhanced_input
                             With<ActionEvents>, // bevy_enhanced_input
-                            // With<GlobalRng>,    // rng
+                                             // With<GlobalRng>,    // rng
                         )>,
                     >(world, ui, &mut selected_entities);
                 });
@@ -240,7 +231,6 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
             });
         });
 }
-
 
 fn toggle_editor(mut next_state: ResMut<NextState<EditorState>>, state: Res<State<EditorState>>) {
     next_state.set(match state.get() {
@@ -352,4 +342,3 @@ fn draw_mesh_intersections(pointers: Query<&PointerInteraction>, mut gizmos: Giz
 // pub fn step(mut physics_time: ResMut<Time<Physics>>, fixed_time: Res<Time<Fixed>>) {
 //     physics_time.advance_by(fixed_time.delta());
 // }
-

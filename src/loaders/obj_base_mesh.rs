@@ -46,7 +46,7 @@ impl AssetLoader for ObjBaseMeshLoader {
             reader.read_to_end(&mut bytes).await?;
 
             let obj_data = obj::ObjData::load_buf(&bytes[..])?;
-            
+
             let mut mesh = load_obj_as_mesh(&bytes, settings)?;
 
             // MakeHuman uses DECIMETER units - scale to meters (0.1x)
@@ -76,7 +76,6 @@ impl AssetLoader for ObjBaseMeshLoader {
                 .map(|&p| Vec3::from(p) * Vec3::new(-SCALE, SCALE, -SCALE))
                 .collect();
 
-
             // Build mhid_lookup: mesh_vert_idx -> obj_vert_idx
             let mesh_verts: Vec<Vec3> = mesh
                 .attribute(Mesh::ATTRIBUTE_POSITION)
@@ -86,7 +85,11 @@ impl AssetLoader for ObjBaseMeshLoader {
 
             let mhid_lookup = build_mhid_lookup(&vertices, &mesh_verts);
 
-            Ok(ObjBaseMesh { mesh, vertices, mhid_lookup })
+            Ok(ObjBaseMesh {
+                mesh,
+                vertices,
+                mhid_lookup,
+            })
         }
     }
 }
@@ -98,7 +101,10 @@ fn build_mhid_lookup(obj_verts: &[Vec3], mesh_verts: &[Vec3]) -> Vec<u16> {
     for (mesh_idx, mesh_vert) in mesh_verts.iter().enumerate() {
         for (obj_idx, obj_vert) in obj_verts.iter().enumerate() {
             if (mesh_vert - obj_vert).length() < 0.0001 {
-                vertex_map.entry(obj_idx as u16).or_default().push(mesh_idx as u16);
+                vertex_map
+                    .entry(obj_idx as u16)
+                    .or_default()
+                    .push(mesh_idx as u16);
                 break;
             }
         }

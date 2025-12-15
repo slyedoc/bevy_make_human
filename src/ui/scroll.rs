@@ -1,13 +1,20 @@
 use bevy::{
     ecs::{
-        bundle::Bundle, name::Name, observer::On, relationship::RelatedSpawner, spawn::{SpawnRelated, SpawnWith}, system::Query
-    }, feathers::{
-        rounded_corners::RoundedCorners,
-        theme::ThemeBackgroundColor, tokens,
-    }, math::Vec2, picking::events::{Pointer, Scroll as ScrollEvent}, ui::{
-        AlignItems, ComputedNode, JustifyContent, Node, Overflow, OverflowAxis,
-        PositionType, ScrollPosition, UiRect, Val, ZIndex,
-    }, ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar, observe}
+        bundle::Bundle,
+        name::Name,
+        observer::On,
+        relationship::RelatedSpawner,
+        spawn::{SpawnRelated, SpawnWith},
+        system::Query,
+    },
+    feathers::{rounded_corners::RoundedCorners, theme::ThemeBackgroundColor, tokens},
+    math::Vec2,
+    picking::events::{Pointer, Scroll as ScrollEvent},
+    ui::{
+        AlignItems, ComputedNode, JustifyContent, Node, Overflow, OverflowAxis, PositionType,
+        ScrollPosition, UiRect, Val, ZIndex,
+    },
+    ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar, observe},
 };
 
 /// Scrollbar styling constants
@@ -38,7 +45,7 @@ impl Default for ScrollProps {
             height: Val::Auto,
             overflow: Overflow::hidden(),
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),            
+            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }
@@ -55,7 +62,7 @@ impl ScrollProps {
                 y: OverflowAxis::Scroll,
             },
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),            
+            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }
@@ -120,11 +127,7 @@ impl ScrollProps {
 ///     ]
 /// )
 /// ```
-pub fn scroll<C: Bundle, B: Bundle>(
-    props: ScrollProps,
-    overrides: B,
-    children: C,
-) -> impl Bundle {
+pub fn scroll<C: Bundle, B: Bundle>(props: ScrollProps, overrides: B, children: C) -> impl Bundle {
     let base_padding = 4.0;
     let has_vscroll = props.overflow.y == OverflowAxis::Scroll;
     let has_hscroll = props.overflow.x == OverflowAxis::Scroll;
@@ -132,8 +135,16 @@ pub fn scroll<C: Bundle, B: Bundle>(
     let padding = UiRect {
         left: Val::Px(base_padding),
         top: Val::Px(base_padding),
-        right: Val::Px(if has_vscroll { base_padding + SCROLLBAR_WIDTH } else { base_padding }),
-        bottom: Val::Px(if has_hscroll { base_padding + SCROLLBAR_WIDTH } else { base_padding }),
+        right: Val::Px(if has_vscroll {
+            base_padding + SCROLLBAR_WIDTH
+        } else {
+            base_padding
+        }),
+        bottom: Val::Px(if has_hscroll {
+            base_padding + SCROLLBAR_WIDTH
+        } else {
+            base_padding
+        }),
     };
 
     (
@@ -143,27 +154,29 @@ pub fn scroll<C: Bundle, B: Bundle>(
             position_type: PositionType::Relative,
             ..Default::default()
         },
-        bevy::ecs::hierarchy::Children::spawn(
-            SpawnWith(move |parent: &mut RelatedSpawner<bevy::ecs::hierarchy::ChildOf>| {
+        bevy::ecs::hierarchy::Children::spawn(SpawnWith(
+            move |parent: &mut RelatedSpawner<bevy::ecs::hierarchy::ChildOf>| {
                 // Spawn the scroll area first
-                let scroll_area_id = parent.spawn((
-                    Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        flex_direction: props.flex_direction,
-                        justify_content: JustifyContent::Start,
-                        align_items: props.align_items,
-                        overflow: props.overflow,
-                        padding,
-                        ..Default::default()
-                    },
-                    ScrollPosition::default(),
-                    props.corners.to_border_radius(4.0),
-                    ThemeBackgroundColor(tokens::WINDOW_BG),
-                    observe(scroll_observer),
-                    children,
-                    overrides,
-                )).id();
+                let scroll_area_id = parent
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            flex_direction: props.flex_direction,
+                            justify_content: JustifyContent::Start,
+                            align_items: props.align_items,
+                            overflow: props.overflow,
+                            padding,
+                            ..Default::default()
+                        },
+                        ScrollPosition::default(),
+                        props.corners.to_border_radius(4.0),
+                        ThemeBackgroundColor(tokens::WINDOW_BG),
+                        observe(scroll_observer),
+                        children,
+                        overrides,
+                    ))
+                    .id();
 
                 // Spawn vertical scrollbar if needed
                 if has_vscroll {
@@ -177,7 +190,11 @@ pub fn scroll<C: Bundle, B: Bundle>(
                             top: Val::Px(0.0),
                             ..Default::default()
                         },
-                        Scrollbar::new(scroll_area_id, ControlOrientation::Vertical, SCROLLBAR_MIN_THUMB_SIZE),
+                        Scrollbar::new(
+                            scroll_area_id,
+                            ControlOrientation::Vertical,
+                            SCROLLBAR_MIN_THUMB_SIZE,
+                        ),
                         ThemeBackgroundColor(tokens::SLIDER_BG),
                         ZIndex(1),
                         bevy::ecs::hierarchy::Children::spawn(bevy::ecs::spawn::Spawn((
@@ -207,7 +224,11 @@ pub fn scroll<C: Bundle, B: Bundle>(
                             left: Val::Px(0.0),
                             ..Default::default()
                         },
-                        Scrollbar::new(scroll_area_id, ControlOrientation::Horizontal, SCROLLBAR_MIN_THUMB_SIZE),
+                        Scrollbar::new(
+                            scroll_area_id,
+                            ControlOrientation::Horizontal,
+                            SCROLLBAR_MIN_THUMB_SIZE,
+                        ),
                         ThemeBackgroundColor(tokens::SLIDER_BG),
                         ZIndex(1),
                         bevy::ecs::hierarchy::Children::spawn(bevy::ecs::spawn::Spawn((
@@ -222,8 +243,8 @@ pub fn scroll<C: Bundle, B: Bundle>(
                         ))),
                     ));
                 }
-            })
-        ),
+            },
+        )),
     )
 }
 
@@ -254,7 +275,8 @@ fn scroll_observer(
     if node.overflow.x == OverflowAxis::Scroll
         && node.overflow.y != OverflowAxis::Scroll
         && delta.x == 0.
-        && delta.y != 0. {
+        && delta.y != 0.
+    {
         delta.x = delta.y;
         delta.y = 0.;
     }

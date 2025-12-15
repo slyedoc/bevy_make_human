@@ -14,7 +14,7 @@
 //!   transparent false
 
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader},
     image::ImageLoaderSettings,
     prelude::*,
     render::render_resource::Face,
@@ -48,7 +48,6 @@ impl AssetLoader for MhmatLoader {
         _settings: &Self::Settings,
         load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
-        
         // TODO: Everything below here is make up by Claude, come back to this
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
@@ -65,7 +64,7 @@ impl AssetLoader for MhmatLoader {
         let mut roughness: Option<f32> = None;
         let mut ior = 1.5f32;
         let mut translucency = 0.0f32;
-        let mut normal_intensity = 1.0f32;
+        let mut _normal_intensity = 1.0f32;
 
         // Textures
         let mut diffuse_texture: Option<Handle<Image>> = None;
@@ -136,7 +135,7 @@ impl AssetLoader for MhmatLoader {
                     translucency = parts[1].parse().unwrap_or(0.0);
                 }
                 "normalmapIntensity" if parts.len() >= 2 => {
-                    normal_intensity = parts[1].parse().unwrap_or(1.0);
+                    _normal_intensity = parts[1].parse().unwrap_or(1.0);
                 }
 
                 // Textures
@@ -209,13 +208,13 @@ impl AssetLoader for MhmatLoader {
         let spec_linear = specular_color.to_linear();
         let reflectance = (spec_linear.red + spec_linear.green + spec_linear.blue) / 3.0;
 
-        // Warn if normal intensity != 1.0 (can't directly apply in StandardMaterial)
-        if (normal_intensity - 1.0).abs() > 0.01 && normal_texture.is_some() {
-            warn!(
-                "mhmat normalmapIntensity={} ignored, StandardMaterial doesn't support intensity scaling",
-                normal_intensity
-            );
-        }
+        // // Warn if normal intensity != 1.0 (can't directly apply in StandardMaterial)
+        // if (normal_intensity - 1.0).abs() > 0.01 && normal_texture.is_some() {
+        //     // warn!(
+        //     //     "mhmat normalmapIntensity={} ignored, StandardMaterial doesn't support intensity scaling",
+        //     //     normal_intensity
+        //     // );
+        // }
 
         Ok(StandardMaterial {
             base_color,
@@ -233,8 +232,8 @@ impl AssetLoader for MhmatLoader {
             alpha_mode,
             cull_mode,
             // TODO: these seems wrong alot
-            double_sided:  false, // !backface_cull,
-            unlit: false, // shadeless,
+            double_sided: false, // !backface_cull,
+            unlit: false,        // shadeless,
             ..default()
         })
     }

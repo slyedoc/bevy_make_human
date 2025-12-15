@@ -34,8 +34,7 @@ pub struct HumanQuery {
     ClothingOffset,
     FloorOffset,
     Morphs,
-    HumanDirty, // will trigger a rebuild when spawned
-    // bevy
+    HumanDirty, // will trigger a generate when spawned        
     Transform,
     Visibility,
 )]
@@ -62,7 +61,9 @@ pub struct ClothingOffset(
 );
 
 impl From<f32> for ClothingOffset {
-    fn from(v: f32) -> Self { Self(v) }
+    fn from(v: f32) -> Self {
+        Self(v)
+    }
 }
 
 /// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
@@ -73,7 +74,9 @@ pub struct FloorOffset(
 );
 
 impl From<f32> for FloorOffset {
-    fn from(v: f32) -> Self { Self(v) }
+    fn from(v: f32) -> Self {
+        Self(v)
+    }
 }
 
 #[derive(Component, Clone, Debug, Default, Deref, DerefMut, Reflect)]
