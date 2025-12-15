@@ -1,7 +1,6 @@
 [package]
 name = "bevy_make_human"
 description = "MakeHuman integration for Bevy"
-license = "MIT OR Apache-2.0"
 repository = "https://github.com/slyedoc/bevy_make_human"
 keywords = ["bevy", "makehuman", "gamedev"]
 categories = ["game-development"]
@@ -10,13 +9,18 @@ version = "0.1.1"
 edition = "2024"
 
 [features]
-default = []
+default = ["glossy_eyes", "feathers", "debug_draw", "arkit"]
+glossy_eyes = ["bevy/pbr_multi_layer_material_textures"]
+arkit = []
 feathers = ["bevy/experimental_bevy_feathers", "bevy_ui_text_input", "cosmic-text", "bevy_enhanced_input"]
 debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
 [dependencies]
-bevy = "0.17"
+bevy = { version = "0.17", features = [
+    "png", # png texture support
+    "jpeg", # jpg texture support
+] }
 avian3d = "0.4"
 bevy-inspector-egui = { version = "0.35" }
 
@@ -30,7 +34,6 @@ bevy_asset_loader = { git="https://github.com/slyedoc/bevy_asset_loader.git", br
 iyes_progress = { git = "https://github.com/funatsufumiya/iyes_progress.git", branch = "feat/bevy_0.17" }
 
 obj = "0.10.2"
-bevy_obj = { version = "0.17", default-features = false, features = ["mesh"] }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -56,7 +59,7 @@ required-features = ["feathers", "debug_draw"]
 
 [[example]]
 name = "arkit"
-required-features = ["feathers", "debug_draw"]
+required-features = ["feathers", "debug_draw", "arkit"]
 
 [dev-dependencies]
 bevy = { version = "0.17", features = [

@@ -1235,7 +1235,6 @@ dependencies = [
  "bevy_mod_billboard",
  "bevy_mod_mipmap_generator",
  "bevy_mod_skinned_aabb",
- "bevy_obj",
  "bevy_ui_text_input",
  "cosmic-text",
  "iyes_progress",
@@ -1336,18 +1335,6 @@ dependencies = [
  "bevy_mesh",
  "bevy_reflect",
  "bevy_transform",
-]
-
-[[package]]
-name = "bevy_obj"
-version = "0.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "376508f88ed34cab9f358bade26d5843fbe6b0c017a7f0fb4bc98fcf56e0a90a"
-dependencies = [
- "bevy",
- "serde",
- "thiserror 2.0.17",
- "tobj",
 ]
 
 [[package]]
@@ -5691,15 +5678,6 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
-
-[[package]]
-name = "tobj"
-version = "4.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04aca6092e5978e708ee784e8ab9b5cf3cdb598b28f99a2f257446e7081a7025"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "toml_datetime"

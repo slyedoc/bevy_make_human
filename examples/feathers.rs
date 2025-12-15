@@ -8,8 +8,10 @@ use bevy::{
     app::AppExit,
     feathers::{FeathersPlugins, controls::*, dark_theme::create_dark_theme, theme::*, tokens},
     picking::mesh_picking::MeshPickingPlugin,
+    core_pipeline::{tonemapping::Tonemapping::AcesFitted},
     prelude::*,
     ui_widgets::*,
+    render::view::Hdr,
 };
 use bevy_make_human::{
     prelude::*,
@@ -29,8 +31,9 @@ fn main() -> AppExit {
             MakeHumanPlugin::default(),            
             CommonPlugin,
         ))
-
+        .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, (setup, setup_ui))
+        //.add_systems(Update, animate_light)
         .add_systems(
             Update,
             // stop camera controller when typing in text input
@@ -49,6 +52,8 @@ fn setup(
 
     commands.spawn((
         Camera3d::default(),
+        Hdr,
+        AcesFitted,
         CameraFree::default(),
         Transform::from_xyz(0.0, 3., -5.0).looking_at(Vec3::new(0.0, 1.4, 0.0), Vec3::Y),
     ));
@@ -117,6 +122,23 @@ fn setup(
         ))
         .observe(on_human_click);
 }
+
+/// Moves the light around.
+fn animate_light(
+    mut lights: Query<&mut Transform, Or<(With<PointLight>, With<DirectionalLight>)>>,
+    time: Res<Time>,
+) {
+    let now = time.elapsed_secs();
+    for mut transform in lights.iter_mut() {
+        transform.translation = vec3(
+            ops::sin(now * 1.4),
+            ops::cos(now * 1.0),
+            ops::cos(now * 0.6),
+        ) * vec3(3.0, 4.0, 3.0);
+        transform.look_at(Vec3::ZERO, Vec3::Y);
+    }
+}
+
 
 /// Container for editor panels
 #[derive(Component)]

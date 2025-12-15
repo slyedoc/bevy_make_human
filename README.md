@@ -26,9 +26,8 @@ It looks for: ```assets/make_human```, supports BEVY_ASSET_ROOT.
 
 ### Adding Assets
 
-1. Download asset packs from [MakeHuman Community Asset Packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them into your `assets/make_human/` folder. 
-2. Add .meta files if needed, compair with exiting assets of simaler type to see what needs .meta files are needed.
-  - TODO: document and make script for this
+1. Download asset packs from [MakeHuman Community Asset Packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them into your `assets/make_human/` folder.
+2. Run `./tools/make_meta.sh` to create `.obj.meta` files for any new OBJ files.
 3. Build, and the enums will update to reflect the new assets.
 
 ### Current Assets 
@@ -44,9 +43,7 @@ I will most likely remove most these and give instructions to download and zip b
 ## TODO
 
   - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
-  - [ ] Script to create meta files for any obj and json files in assets/make_human
-  - [ ] Animat
-  ions
+  - [ ] Animations
     - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
     - [ ] Walk cycles
     - [ ] Facial rigs

@@ -38,6 +38,7 @@ pub struct HumanAssets {
     /// Offset to push clothing outward (prevents skin poke-through)
     pub clothing_offset: f32,
 
+    #[cfg(feature = "arkit")]
     /// ARKit blend shape targets (52 shapes)
     pub arkit_targets: Vec<Handle<MorphTargetData>>,
 }
@@ -61,6 +62,7 @@ impl HumanAssets {
             handles.push(handle.clone().untyped());
         }
 
+        #[cfg(feature = "arkit")]
         for handle in &self.arkit_targets {
             handles.push(handle.clone().untyped());
         }
