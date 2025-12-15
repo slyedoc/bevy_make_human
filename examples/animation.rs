@@ -1,3 +1,4 @@
+#![allow(warnings)]
 #[path ="common/mod.rs"]
 mod common;
 use common::*;
@@ -9,16 +10,17 @@ use bevy_make_human::prelude::*;
 use std::{any::TypeId, f32::consts::PI};
 
 fn main() -> AppExit {
-    App::new()
-        .add_plugins((
-            DefaultPlugins,
-            PhysicsPlugins::default(),
-            MakeHumanPlugin::default(),
-            CommonPlugin, // camera controls, egui, mipmaps, skinned AABB
-        ))
-        .init_collection::<MixamoAnimations>()
-        .add_systems(Startup, setup)
-        .run()
+    todo!("wip");
+    // App::ne1w()
+    //     .add_plugins((
+    //         DefaultPlugins,
+    //         PhysicsPlugins::default(),
+    //         MakeHumanPlugin::default(),
+    //         CommonPlugin, // camera controls, egui, mipmaps, skinned AABB
+    //     ))
+    //     .init_collection::<MixamoAnimations>()
+    //     .add_systems(Startup, setup)
+    //     .run()
 }
 
 #[derive(AssetCollection, Resource)]

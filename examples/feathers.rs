@@ -915,7 +915,6 @@ fn on_open_clothing_menu(
                 ),
             ],
             Hovered(false),
-            observe(on_hover_exit),
         ));
     }
 }
@@ -1394,8 +1393,7 @@ fn on_open_morph_menu(
                     Children::spawn(SpawnIter(option_bundles.into_iter())),
                 ),
             ],
-            Hovered(false),
-            observe(on_hover_exit),
+            Hovered(false),            
         ));
     }
 }
@@ -1737,8 +1735,7 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
                 Children::spawn(SpawnIter(options.into_iter())),
             ),
         ],
-        Hovered(false),
-        observe(on_hover_exit),
+        Hovered(false),        
     ));
 }
 
@@ -1852,22 +1849,7 @@ fn on_open_dropdown_thumb<T: Component + Copy + IntoEnumIterator + ToString + MH
             ),
         ],
         Hovered(false),
-        observe(on_hover_exit),
     ));
-}
-
-
-/// Close dropdown when hover exits
-// TODO: re-enable hover exit behavior
-// fn on_hover_exit(trigger: On<Pointer<Out>>, mut commands: Commands, hover_query: Query<&Hovered>) {
-//     if let Ok(hovered) = hover_query.get(trigger.entity) {
-//         if !hovered.0 {
-//             commands.entity(trigger.entity).despawn();
-//         }
-//     }
-// }
-fn on_hover_exit(_trigger: On<Pointer<Out>>, _commands: Commands, _hover_query: Query<&Hovered>) {
-    // disabled - using close button instead
 }
 
 /// Filter options based on text input (for dropdowns)
@@ -1893,154 +1875,3 @@ fn filter_text_changed<T: Component, K: Component>(
         }
     }
 }
-
-/* // Face section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Face",
-//     face_collapsed,
-//     |content| {
-//         spawn_optional_dropdown::<HairAsset>(
-//             content,
-//             "Hair",
-//             hair,
-//             human_entity,
-//         );
-//         spawn_dropdown::<EyesAsset>(
-//             content,
-//             "Eyes",
-//             eyes,
-//             human_entity,
-//         );
-//         spawn_dropdown::<EyeMaterialAsset>(
-//             content,
-//             "Eye Color",
-//             eye_material,
-//             human_entity,
-//         );
-//         spawn_dropdown::<EyebrowsAsset>(
-//             content,
-//             "Eyebrows",
-//             eyebrows,
-//             human_entity,
-//         );
-//         spawn_dropdown::<EyelashesAsset>(
-//             content,
-//             "Eyelashes",
-//             eyelashes,
-//             human_entity,
-//         );
-//     },
-// );
-
-// // Mouth section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Mouth",
-//     mouth_collapsed,
-//     |content| {
-//         spawn_dropdown::<TeethAsset>(
-//             content,
-//             "Teeth",
-//             teeth,
-//             human_entity,
-//         );
-//         spawn_dropdown::<TongueAsset>(
-//             content,
-//             "Tongue",
-//             tongue,
-//             human_entity,
-//         );
-//     },
-// );
-
-// // Clothing section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Clothing",
-//     clothing_collapsed,
-//     |content| {
-//         spawn_clothing_list_content(
-//             content,
-//             &clothing,
-//             clothing_offset,
-//             human_entity,
-//         );
-//     },
-// );
-
-// // Phenotype section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Phenotype",
-//     phenotype_collapsed,
-//     |content| {
-//         spawn_phenotype_sliders_content(
-//             content,
-//             &phenotype,
-//             human_entity,
-//         );
-//     },
-// );
-
-// // Morphs section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Morphs",
-//     morphs_collapsed,
-//     |content| {
-//         spawn_morphs_list_content(content, &morphs, human_entity);
-//     },
-// );
-
-// // Pose section
-// spawn_collapsible_section(
-//     scroll_content,
-//     "Pose",
-//     pose_collapsed,
-//     |content| {
-//         spawn_pose_list_content(content, human_entity);
-//     },
-// );
-*/
-// /// System to apply poses when loaded
-// fn apply_pose_system(
-//     mut commands: Commands,
-//     pose_query: Query<(Entity, &LoadingPose)>,
-//     pose_assets: Res<Assets<Pose>>,
-//     children_query: Query<&Children>,
-//     name_query: Query<&Name>,
-//     mut transform_query: Query<&mut Transform>,
-// ) {
-//     for (entity, loading_pose) in pose_query.iter() {
-//         let Some(pose) = pose_assets.get(&loading_pose.0) else {
-//             continue; // Pose not loaded yet
-//         };
-
-//         // Find bone entities and apply pose
-//         for child in children_query.iter_descendants(entity) {
-//             let Ok(name) = name_query.get(child) else {
-//                 continue;
-//             };
-//             let bone_name = name.as_str();
-
-//             // Check for rotation in pose
-//             if let Some(pose_rotation) = pose.rotation(bone_name) {
-//                 if let Ok(mut transform) = transform_query.get_mut(child) {
-//                     // BVH rotation is a delta from bind pose
-//                     transform.rotation = transform.rotation * pose_rotation;
-//                 }
-//             }
-//         }
-
-//         // Remove components after applying
-//         commands
-//             .entity(entity)
-//             .remove::<ApplyPose>()
-//             .remove::<LoadingPose>();
-//         info!(
-//             "Applied pose with {} bone rotations",
-//             pose.bone_rotations.len()
-//         );
-//     }
-// }

@@ -5,7 +5,7 @@ Customizable humanoid characters in Bevy.
 [make huamn](https://static.makehumancommunity.org/index.html)
 [mpfb2 repo](https://github.com/makehumancommunity/mpfb2.git)
 
-There is also [Humentity](https://github.com/emberlightstudios/Humentity) that you should check out.
+There is another bevy plugin for this, [Humentity](https://github.com/emberlightstudios/Humentity), that you should check out.
 
 ## TLDR; 
 
@@ -45,19 +45,19 @@ I will most likely remove most these and give instructions to download and zip b
 
   - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
   - [ ] Script to create meta files for any obj and json files in assets/make_human
-  - [ ] Animations
+  - [ ] Animat
+  ions
     - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
     - [ ] Walk cycles
     - [ ] Facial rigs
   - [ ] support [Delete Groups](https://static.makehumancommunity.org/assets/creatingassets/makeclothes/makeclothes_deletegroups.html) instead of ClothingOffset
   - [ ] Morphs
-    - [ ] Refacter phenotype completely, MorphTargets works much better
     - [ ] Allow some to be used as MorphWeights, 
         - limit to 64?
     
 ## License
 
-All assets come from make human community and mpfb2 and are licensed under :
+All assets in assets/make_human come from make human community and mpfb2 and are licensed under :
 
 * CC0 1.0 Universal [LICENSE-CCO](LICENSE-CCO)
  see [mpfb2](https://github.com/makehumancommunity/mpfb2/blob/master/LICENSE.md):
@@ -67,3 +67,5 @@ Rest of the code in this repository is dual-licensed under either:
 * MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
 * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
 Code is licensed under MIT or Apache-2.0 at your option.
+
+> TODO: update animation license info
