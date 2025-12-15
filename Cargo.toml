@@ -1,10 +1,16 @@
 [package]
 name = "bevy_make_human"
+description = "MakeHuman integration for Bevy"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/slyedoc/bevy_make_human"
+keywords = ["bevy", "makehuman", "gamedev"]
+categories = ["game-development"]
+authors = ["Patrick Towles <james.towles+bevy_make_human@gmail.com>"]
 version = "0.1.1"
 edition = "2024"
 
 [features]
-default = ["feathers", "debug_draw"]
+default = []
 feathers = ["bevy/experimental_bevy_feathers", "bevy_ui_text_input", "cosmic-text", "bevy_enhanced_input"]
 debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
@@ -50,7 +56,7 @@ required-features = ["feathers", "debug_draw"]
 
 [[example]]
 name = "arkit"
-required-features = []
+required-features = ["feathers", "debug_draw"]
 
 [dev-dependencies]
 bevy = { version = "0.17", features = [
