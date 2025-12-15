@@ -14,7 +14,7 @@ pub struct HumanQuery {
     pub eyelashes: &'static Eyelashes,
     pub teeth: &'static Teeth,
     pub tongue: &'static Tongue,
-    pub hair: &'static Hair,
+    pub hair: Option<&'static Hair>,
     pub morphs: &'static Morphs,
     pub clothing: &'static Outfit,
     pub floor_offset: &'static FloorOffset,

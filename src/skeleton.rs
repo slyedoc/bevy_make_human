@@ -2,6 +2,7 @@
 
 use bevy::{math::Affine3A, platform::collections::HashMap, prelude::*};
 
+// TODO: Clean this up, shouldn't be storing all this and using strings for everything...
 /// Component storing character skeleton - bones, hierarchy, bind pose
 #[derive(Component, Clone)]
 pub struct Skeleton {

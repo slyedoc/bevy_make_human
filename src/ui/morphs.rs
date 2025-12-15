@@ -4,7 +4,7 @@ use crate::{
     prelude::Morph,
     ui::{
         clothing::ClothingMenu,
-        dropdown::{DropdownMenu, FilterOptions},
+        dropdown::{DropdownMenu, FilterOptions, matches_filter},
     },
 };
 use bevy::{
@@ -352,9 +352,8 @@ fn on_morph_filter(
         if let Ok(container) = options_container.get(child) {
             for c in children_query.iter_descendants(container) {
                 if let Ok((option, mut node)) = query.get_mut(c) {
-                    let label = format!("{:?}", option.0).to_lowercase();
-                    let filter = trigger.filter.to_lowercase();
-                    node.display = if filter.is_empty() || label.contains(&filter) {
+                    let label = format!("{:?}", option.0);
+                    node.display = if matches_filter(&label, &trigger.filter) {
                         Display::Flex
                     } else {
                         Display::None

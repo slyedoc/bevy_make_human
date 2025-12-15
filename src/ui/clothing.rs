@@ -17,7 +17,7 @@ use crate::{
     assets::Clothing,
     prelude::{HumanDirty, Outfit},
     ui::{
-        dropdown::{DropdownMenu, FilterOptions},
+        dropdown::{DropdownMenu, FilterOptions, matches_filter},
         morphs::MorphMenu,
         scroll::{ScrollProps, scroll},
         text_input::{TextInputProps, text_input},
@@ -288,9 +288,8 @@ fn on_clothing_filter(
         if let Ok(container) = options_container.get(child) {
             for c in children_query.iter_descendants(container) {
                 if let Ok((option, mut node)) = query.get_mut(c) {
-                    let label = option.0.to_string().to_lowercase();
-                    let filter = trigger.filter.to_lowercase();
-                    node.display = if filter.is_empty() || label.contains(&filter) {
+                    let label = option.0.to_string();
+                    node.display = if matches_filter(&label, &trigger.filter) {
                         Display::Flex
                     } else {
                         Display::None

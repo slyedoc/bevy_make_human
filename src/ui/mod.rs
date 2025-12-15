@@ -19,9 +19,10 @@ use crate::{
     assets::{Eyebrows, Eyelashes, Eyes, Hair, Rig, SkinMaterial, SkinMesh, Teeth, Tongue},
     prelude::{ClothingOffset, FloorOffset, HumanQuery},
 };
+
 use clothing::clothing_section;
 use collapsible::collapsible;
-use dropdown::{dropdown, dropdown_with_thumb};
+use dropdown::{dropdown, dropdown_with_thumb, dropdown_optional_with_thumb};
 use morphs::morphs_section;
 use offset::offset_slider;
 use scroll::{ScrollProps, scroll};
@@ -75,7 +76,6 @@ fn on_human_editor_add(
     let skin_mesh = *h.skin_mesh;
     let skin_material = *h.skin_material;
     let floor_offset = h.floor_offset.0;
-    let hair = *h.hair;
     let eyes = *h.eyes;
     let eyebrows = *h.eyebrows;
     let eyelashes = *h.eyelashes;
@@ -143,7 +143,7 @@ fn on_human_editor_add(
                 "Head",
                 true,
                 children![
-                    dropdown_with_thumb::<Hair>(human_entity, hair),
+                    dropdown_optional_with_thumb::<Hair>(human_entity, h.hair),
                     dropdown_with_thumb::<Eyes>(human_entity, eyes),
                     dropdown_with_thumb::<Eyebrows>(human_entity, eyebrows),
                     dropdown_with_thumb::<Eyelashes>(human_entity, eyelashes),
