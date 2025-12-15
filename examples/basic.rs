@@ -54,9 +54,9 @@ fn setup(
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        Clothing(vec![
-            ClothingAsset::ToigoMaleSuit3,
-            ClothingAsset::ToigoAnkleBootsMale,
+        Outfit(vec![
+            Clothing::ToigoMaleSuit3,
+            Clothing::ToigoAnkleBootsMale,
         ]),
         Morphs(vec![Morph::new(
             MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),
@@ -77,10 +77,9 @@ fn setup(
         Eyelashes::Eyelashes04,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        Clothing(vec![ClothingAsset::ElvsGoddessDress8]),
+        Outfit(vec![Clothing::ElvsGoddessDress8]),
         Morphs(vec![
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),
+            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),            
         ]),
         Transform::from_xyz(1.0, 0.0, 0.0),
     ));

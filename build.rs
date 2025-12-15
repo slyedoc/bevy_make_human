@@ -84,7 +84,7 @@ fn main() -> io::Result<()> {
         &mut f,
         &assets_dir,
         "clothes",
-        "ClothingAsset",
+        "Clothing",
         &AssetFilePattern {
             required: &["mhclo", "mhmat", "obj", "thumb"],
             textures: &["diffuse", "normal", "specular", "ao", "bump"],
@@ -322,7 +322,7 @@ fn generate_asset_enum(
         "Teeth",
         "Tongue",
         "Hair",
-        "ClothingAsset",
+        "Clothing",
     ];
     const MHPART_METHODS: &[&str] = &["mhclo", "mhmat", "obj", "thumb"];
     let is_mhpart = MHPART_ENUMS.contains(&enum_name);
@@ -1551,7 +1551,7 @@ fn generate_mhpart_trait(f: &mut File) -> io::Result<()> {
         "Teeth",
         "Tongue",
         "Hair",
-        "ClothingAsset",
+        "Clothing",
     ];
 
     // Generate MHThumb for thumb-only enums

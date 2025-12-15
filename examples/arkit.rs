@@ -16,7 +16,7 @@ struct TestAnimation {
 fn main() -> AppExit {
     // WIP testing animating ARKit blend shapes
     // currently reusing custom targets mapped to ARKit shapes, and missing like 16 shapes
-    // TODO: learn to create proper ARKit blend shapes for base model
+    // TODO: learn to create proper ARKit blend shapes for base model in blender, fml
     App::new()
         .add_plugins((
             DefaultPlugins,
@@ -38,7 +38,7 @@ fn setup(
     commands.spawn((
         Camera3d::default(),
         CameraFree::default(),
-        Transform::from_xyz(0.0, 1.6, 1.0).looking_at(Vec3::new(0.0, 1.4, 0.0), Vec3::Y),
+        Transform::from_xyz(0.0, 1.6, -1.0).looking_at(Vec3::new(0.0, 1.4, 0.0), Vec3::Y),
     ));
 
     commands.spawn((
@@ -70,9 +70,9 @@ fn setup(
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        Clothing(vec![
-            ClothingAsset::ToigoMaleSuit3,
-            ClothingAsset::ToigoAnkleBootsMale,
+        Outfit(vec![
+            Clothing::ToigoMaleSuit3,
+            Clothing::ToigoAnkleBootsMale,
         ]),
         Morphs(vec![Morph::new(
             MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),

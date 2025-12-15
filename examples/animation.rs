@@ -76,9 +76,9 @@ fn setup(
             Eyelashes::Eyelashes01,
             Teeth::TeethBase,
             Tongue::Tongue01,
-            Clothing(vec![
-                ClothingAsset::ToigoMaleSuit3,
-                ClothingAsset::ToigoAnkleBootsMale,
+            Outfit(vec![
+                Clothing::ToigoMaleSuit3,
+                Clothing::ToigoAnkleBootsMale,
             ]),
             Morphs(vec![Morph::new(
                 MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),

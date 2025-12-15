@@ -16,7 +16,7 @@ pub struct HumanQuery {
     pub tongue: &'static Tongue,
     pub hair: &'static Hair,
     pub morphs: &'static Morphs,
-    pub clothing: &'static Clothing,
+    pub clothing: &'static Outfit,
     pub floor_offset: &'static FloorOffset,
     pub clothing_offset: &'static ClothingOffset,
 }
@@ -33,7 +33,7 @@ pub struct HumanQuery {
     Eyelashes,
     Teeth,
     Tongue,
-    Clothing,
+    Outfit,
     ClothingOffset,
     FloorOffset,
     Morphs,
@@ -53,7 +53,7 @@ pub struct HumanDirty;
 
 // Clothing is the only multi-item part, needs wrapper
 #[derive(Component, Clone, Default, Debug, Reflect, Deref, DerefMut)]
-pub struct Clothing(pub Vec<ClothingAsset>);
+pub struct Outfit(pub Vec<Clothing>);
 
 /// Uses normals to offset clothing away from skin, hack to reduce z-fighting
 // TODO: replace with Delete Vertex Groups

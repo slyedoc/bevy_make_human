@@ -14,8 +14,8 @@ use strum::IntoEnumIterator;
 
 use crate::{
     MHThumb,
-    assets::ClothingAsset,
-    prelude::{Clothing, HumanDirty},
+    assets::Clothing,
+    prelude::{HumanDirty, Outfit},
     ui::{
         dropdown::{DropdownMenu, FilterOptions},
         morphs::MorphMenu,
@@ -34,7 +34,7 @@ struct ClothingList;
 pub struct ClothingMenu;
 
 #[derive(Component)]
-struct ClothingOption(ClothingAsset);
+struct ClothingOption(Clothing);
 
 #[derive(Component)]
 pub struct ClothingFilterInput;
@@ -48,7 +48,7 @@ struct ClothingItem(usize);
 #[derive(EntityEvent)]
 struct ClothingSelect {
     entity: Entity,
-    item: ClothingAsset,
+    item: Clothing,
 }
 
 #[derive(EntityEvent)]
@@ -62,8 +62,8 @@ struct ClothingClose {
     entity: Entity,
 }
 
-pub fn clothing_section(human_entity: Entity, clothing: &Clothing) -> impl Bundle {
-    let items: Vec<_> = clothing
+pub fn clothing_section(human_entity: Entity, outfit: &Outfit) -> impl Bundle {
+    let items: Vec<_> = outfit
         .iter()
         .enumerate()
         .map(|(idx, item)| clothing_item_row(human_entity, idx, *item))
@@ -113,7 +113,7 @@ pub fn clothing_section(human_entity: Entity, clothing: &Clothing) -> impl Bundl
     )
 }
 
-fn clothing_item_row(_human_entity: Entity, idx: usize, item: ClothingAsset) -> impl Bundle {
+fn clothing_item_row(_human_entity: Entity, idx: usize, item: Clothing) -> impl Bundle {
     (
         Name::new(format!("ClothingItem_{}", idx)),
         ClothingItem(idx),
@@ -183,23 +183,23 @@ fn on_clothing_remove(
 ) -> impl FnMut(
     On<ClothingRemove>,
     Commands,
-    Query<&mut Clothing>,
+    Query<&mut Outfit>,
     Query<&Children>,
     Query<Entity, With<ClothingList>>,
 ) {
     move |trigger: On<ClothingRemove>,
           mut commands: Commands,
-          mut clothing_query: Query<&mut Clothing>,
+          mut outfit_query: Query<&mut Outfit>,
           children_query: Query<&Children>,
           list_query: Query<Entity, With<ClothingList>>| {
-        if let Ok(mut clothing) = clothing_query.get_mut(human_entity) {
-            if trigger.idx < clothing.len() {
-                clothing.remove(trigger.idx);
+        if let Ok(mut outfit) = outfit_query.get_mut(human_entity) {
+            if trigger.idx < outfit.len() {
+                outfit.remove(trigger.idx);
                 commands.entity(human_entity).insert(HumanDirty);
                 for child in children_query.iter_descendants(trigger.entity) {
                     if let Ok(list_entity) = list_query.get(child) {
                         commands.entity(list_entity).despawn_children();
-                        for (idx, item) in clothing.iter().enumerate() {
+                        for (idx, item) in outfit.iter().enumerate() {
                             commands.entity(list_entity).with_child(clothing_item_row(
                                 human_entity,
                                 idx,
@@ -219,25 +219,25 @@ fn on_clothing_select(
 ) -> impl FnMut(
     On<ClothingSelect>,
     Commands,
-    Query<&mut Clothing>,
+    Query<&mut Outfit>,
     Query<&Children>,
     Query<Entity, With<ClothingList>>,
 ) {
     move |trigger: On<ClothingSelect>,
           mut commands: Commands,
-          mut clothing_query: Query<&mut Clothing>,
+          mut outfit_query: Query<&mut Outfit>,
           children_query: Query<&Children>,
           list_query: Query<Entity, With<ClothingList>>| {
         commands.trigger(ClothingClose {
             entity: trigger.entity,
         });
-        if let Ok(mut clothing) = clothing_query.get_mut(human_entity) {
-            if !clothing.contains(&trigger.item) {
-                clothing.push(trigger.item);
+        if let Ok(mut outfit) = outfit_query.get_mut(human_entity) {
+            if !outfit.contains(&trigger.item) {
+                outfit.push(trigger.item);
                 commands.entity(human_entity).insert(HumanDirty);
                 for child in children_query.iter_descendants(trigger.entity) {
                     if let Ok(list_entity) = list_query.get(child) {
-                        let idx = clothing.len() - 1;
+                        let idx = outfit.len() - 1;
                         commands.entity(list_entity).with_child(clothing_item_row(
                             human_entity,
                             idx,
@@ -338,7 +338,7 @@ fn on_open_clothing_menu(
             commands.entity(menu).despawn();
         }
 
-        let options: Vec<_> = ClothingAsset::iter()
+        let options: Vec<_> = Clothing::iter()
             .map(|item| {
                 let label = item.to_string();
                 let image = asset_server.load::<Image>(item.thumb());
@@ -427,7 +427,7 @@ fn on_open_clothing_menu(
 
 fn on_clothing_option_click(
     _human_entity: Entity,
-    item: ClothingAsset,
+    item: Clothing,
 ) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&ChildOf>, Query<&ClothingSection>) {
     move |trigger: On<Pointer<Click>>,
           mut commands: Commands,

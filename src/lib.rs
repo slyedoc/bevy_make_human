@@ -126,7 +126,7 @@ impl Plugin for MakeHumanPlugin {
             .init_asset::<Pose>()
             .init_asset_loader::<BvhPoseLoader>()
             // egui registration
-            .register_type::<Clothing>()
+            .register_type::<Outfit>()
             .register_type::<MHTag>()
             .register_type::<ClothingOffset>()
             .register_type::<FloorOffset>()
@@ -231,7 +231,7 @@ fn dirty_check(
             Changed<Teeth>,
             Changed<Tongue>,
             Changed<Hair>,
-            Changed<Clothing>,
+            Changed<Outfit>,
             Changed<ClothingOffset>,
             Changed<Morphs>,
             Changed<FloorOffset>,

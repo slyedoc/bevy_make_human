@@ -21,14 +21,15 @@ fn main() -> AppExit {
     App::new()
         .add_plugins((
             DefaultPlugins,
+            PhysicsPlugins::default(),            
             FeathersPlugins,
-            MeshPickingPlugin,
-            PhysicsPlugins::default(),
-            MakeHumanPlugin::default(),
-            TextInputPlugin,
+            MeshPickingPlugin, // required for clicking on humans
+            TextInputPlugin, // required for text input fields in human editor
+            // local
+            MakeHumanPlugin::default(),            
             CommonPlugin,
         ))
-        .insert_resource(UiTheme(create_dark_theme()))
+
         .add_systems(Startup, (setup, setup_ui))
         .add_systems(
             Update,
@@ -82,9 +83,9 @@ fn setup(
             Eyelashes::Eyelashes01,
             Teeth::TeethBase,
             Tongue::Tongue01,
-            Clothing(vec![
-                ClothingAsset::ToigoMaleSuit3,
-                ClothingAsset::ToigoAnkleBootsMale,
+            Outfit(vec![
+                Clothing::ToigoMaleSuit3,
+                Clothing::ToigoAnkleBootsMale,
             ]),
             Morphs(vec![Morph::new(
                 MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),
@@ -107,7 +108,7 @@ fn setup(
             Eyelashes::Eyelashes04,
             Teeth::TeethBase,
             Tongue::Tongue01,
-            Clothing(vec![ClothingAsset::ElvsGoddessDress8]),
+            Outfit(vec![Clothing::ElvsGoddessDress8]),
             Morphs(vec![Morph::new(
                 MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung),
                 1.0,
