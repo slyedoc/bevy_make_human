@@ -46,8 +46,6 @@ impl Plugin for UiPlugin {
     }
 }
 
-// ==================== WIDGET ====================
-
 /// Marker component for human editor widget. Stores which human entity to edit.
 /// Content is built via observer on add.
 #[derive(Component)]
