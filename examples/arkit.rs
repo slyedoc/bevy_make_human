@@ -1,5 +1,4 @@
-//! ARKit blend shape animation example
-//! ARKit morphs are built-in - just animate MeshMorphWeights
+
 #[path = "common/mod.rs"]
 mod common;
 pub use common::*;
@@ -16,6 +15,10 @@ struct TestAnimation {
 }
 
 fn main() -> AppExit {
+    
+    // WIP testing animating ARKit blend shapes
+    // currnelty reusing custom targets mapped to ARKit shapes, 
+    // TODO: learn to create proper ARKit blend shapes for base model    
     App::new()
         .add_plugins((
             DefaultPlugins,
