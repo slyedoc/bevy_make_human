@@ -14,7 +14,7 @@ use bevy::{
         light::{LightGizmoColor, LightGizmoConfigGroup},
     },
     input::common_conditions::input_just_pressed,
-    pbr::wireframe::{WireframeConfig, WireframePlugin},
+    pbr::wireframe::{WireframeConfig},
     picking::pointer::{PointerId, PointerInteraction},
     prelude::*,
     render::diagnostic::RenderDiagnosticsPlugin,
@@ -48,8 +48,10 @@ impl Plugin for EditorPlugin {
             DefaultInspectorConfigPlugin,
             StateInspectorPlugin::<MHState>::new().run_if(in_state(EditorState::Enabled)),
             PhysicsDebugPlugin,
-            #[cfg(not(target_arch = "wasm32"))]
-            WireframePlugin::default(),
+            PhysicsDiagnosticsUiPlugin,
+            // TODO: this was working, now crashes on enable
+            //#[cfg(not(target_arch = "wasm32"))]
+            //WireframePlugin::default(),
             DebugPickingPlugin,
             // Diagnostics
             EntityCountDiagnosticsPlugin::default(),
@@ -86,8 +88,9 @@ impl Plugin for EditorPlugin {
                 (
                     toggle_ui_debug,
                     toggle_aabb,
-                    #[cfg(not(target_arch = "wasm32"))]
-                    toggle_wireframe,
+                    // TODO: this was working, now crashes on enable
+                    //#[cfg(not(target_arch = "wasm32"))]
+                    //toggle_wireframe,
                 )
                     .distributive_run_if(input_just_pressed(KeyCode::F3)),
                 toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),
@@ -111,6 +114,7 @@ fn setup(
     state: Res<State<EditorState>>,
     mut ui_debug: ResMut<UiDebugOptions>,
     mut pick_debug: ResMut<DebugPickingMode>,
+    mut physics_ui: ResMut<PhysicsDiagnosticsUiSettings>
 ) {
     let enabled = match state.get() {
         EditorState::Enabled => true,
@@ -136,6 +140,8 @@ fn setup(
     {
         let config = config_store.config_mut::<PhysicsGizmos>().0;
         config.enabled = enabled;
+        
+        physics_ui.enabled = enabled;
     }
 
     // skeleton
@@ -266,6 +272,7 @@ fn toggle_lighting(mut config_store: ResMut<GizmoConfigStore>) {
     config.enabled = !config.enabled;
 }
 
+#[allow(dead_code)]
 #[cfg(not(target_arch = "wasm32"))]
 fn toggle_wireframe(mut config: ResMut<WireframeConfig>) {
     config.global = !config.global;

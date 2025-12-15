@@ -225,16 +225,50 @@ fn on_human_click(
         }
     }
 
-    // Spawn wrapper panel with human_editor as child
+    // Spawn wrapper panel with close button and human_editor as child
     commands.entity(*panels_container).with_child((
+        EditorPanel,
         Node {
             width: px(380.0),
             height: Val::Percent(100.0),
-            padding: UiRect::all(px(8.0)),
+            flex_direction: FlexDirection::Column,
             ..default()
         },
         ThemeBackgroundColor(tokens::WINDOW_BG),
         BorderRadius::all(px(8.0)),
-        children![human_editor(human, ())],
+        children![
+            // Close button wrapper
+            (
+                Node {
+                    align_self: AlignSelf::FlexEnd,
+                    margin: UiRect::new(px(0.0), px(4.0), px(4.0), px(0.0)),
+                    ..default()
+                },
+                children![(
+                    button(ButtonProps::default(), (), Spawn((Text::new("x"), ThemedText))),
+                    observe(close_editor_panel),
+                )],
+            ),
+            // Human editor
+            human_editor(human, ())            
+        ],
     ));
+}
+
+#[derive(Component)]
+struct EditorPanel;
+
+fn close_editor_panel(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parents: Query<&ChildOf>,
+    panels: Query<Entity, With<EditorPanel>>,
+) {
+    // find parent panel and despawn it
+    for e in parents.iter_ancestors(trigger.entity) {
+        if panels.contains(e) {
+            commands.entity(e).despawn();
+            return;
+        }        
+    }    
 }
