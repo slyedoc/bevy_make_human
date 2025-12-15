@@ -22,7 +22,7 @@ use crate::{
 
 use clothing::clothing_section;
 use collapsible::collapsible;
-use dropdown::{dropdown, dropdown_with_thumb, dropdown_optional_with_thumb};
+use dropdown::{dropdown, dropdown_optional_with_thumb, dropdown_with_thumb};
 use morphs::morphs_section;
 use offset::offset_slider;
 use scroll::{ScrollProps, scroll};

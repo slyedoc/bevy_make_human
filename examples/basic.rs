@@ -78,9 +78,10 @@ fn setup(
         Teeth::TeethBase,
         Tongue::Tongue01,
         Outfit(vec![Clothing::ElvsGoddessDress8]),
-        Morphs(vec![
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),            
-        ]),
+        Morphs(vec![Morph::new(
+            MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung),
+            1.0,
+        )]),
         Transform::from_xyz(1.0, 0.0, 0.0),
     ));
 }

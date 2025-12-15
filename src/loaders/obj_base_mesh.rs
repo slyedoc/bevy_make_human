@@ -94,10 +94,9 @@ impl AssetLoader for ObjBaseMeshLoader {
                                     let idx = positions.len() as u32;
                                     positions.push(obj_positions[pos_idx]);
                                     uvs.push(match uv_idx {
-                                        Some(i) => [
-                                            obj_data.texture[i][0],
-                                            1.0 - obj_data.texture[i][1],
-                                        ],
+                                        Some(i) => {
+                                            [obj_data.texture[i][0], 1.0 - obj_data.texture[i][1]]
+                                        }
                                         None => [0.0, 0.0],
                                     });
                                     mhid_lookup.push(pos_idx as u16);
@@ -120,10 +119,7 @@ impl AssetLoader for ObjBaseMeshLoader {
             mesh.compute_smooth_normals();
 
             // Store original obj vertices for mhclo fitting
-            let vertices: Vec<Vec3> = obj_positions
-                .iter()
-                .map(|p| Vec3::from_array(*p))
-                .collect();
+            let vertices: Vec<Vec3> = obj_positions.iter().map(|p| Vec3::from_array(*p)).collect();
 
             Ok(ObjBaseMesh {
                 mesh,

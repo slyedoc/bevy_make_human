@@ -306,7 +306,7 @@ fn human_changed(
         parts.push(MHItem::load(MHTag::Eyelashes, h.eyelashes, &asset_server));
         parts.push(MHItem::load(MHTag::Teeth, h.teeth, &asset_server));
         parts.push(MHItem::load(MHTag::Tongue, h.tongue, &asset_server));
-        
+
         for clothing_item in h.clothing.iter() {
             parts.push(MHItem::load(MHTag::Clothes, clothing_item, &asset_server));
         }

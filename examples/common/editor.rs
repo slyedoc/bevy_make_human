@@ -14,7 +14,7 @@ use bevy::{
         light::{LightGizmoColor, LightGizmoConfigGroup},
     },
     input::common_conditions::input_just_pressed,
-    pbr::wireframe::{WireframeConfig},
+    pbr::wireframe::WireframeConfig,
     picking::pointer::{PointerId, PointerInteraction},
     prelude::*,
     render::diagnostic::RenderDiagnosticsPlugin,
@@ -114,7 +114,7 @@ fn setup(
     state: Res<State<EditorState>>,
     mut ui_debug: ResMut<UiDebugOptions>,
     mut pick_debug: ResMut<DebugPickingMode>,
-    mut physics_ui: ResMut<PhysicsDiagnosticsUiSettings>
+    mut physics_ui: ResMut<PhysicsDiagnosticsUiSettings>,
 ) {
     let enabled = match state.get() {
         EditorState::Enabled => true,
@@ -140,7 +140,7 @@ fn setup(
     {
         let config = config_store.config_mut::<PhysicsGizmos>().0;
         config.enabled = enabled;
-        
+
         physics_ui.enabled = enabled;
     }
 

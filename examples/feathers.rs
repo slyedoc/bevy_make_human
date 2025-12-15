@@ -6,12 +6,13 @@ pub use common::*;
 use avian3d::prelude::*;
 use bevy::{
     app::AppExit,
+    core_pipeline::tonemapping::Tonemapping::AcesFitted,
     feathers::{FeathersPlugins, controls::*, dark_theme::create_dark_theme, theme::*, tokens},
+    input::common_conditions::input_toggle_active,
     picking::mesh_picking::MeshPickingPlugin,
-    core_pipeline::{tonemapping::Tonemapping::AcesFitted},
     prelude::*,
-    ui_widgets::*,
     render::view::Hdr,
+    ui_widgets::*,
 };
 use bevy_make_human::{
     prelude::*,
@@ -23,17 +24,20 @@ fn main() -> AppExit {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            PhysicsPlugins::default(),            
+            PhysicsPlugins::default(),
             FeathersPlugins,
             MeshPickingPlugin, // required for clicking on humans
-            TextInputPlugin, // required for text input fields in human editor
+            TextInputPlugin,   // required for text input fields in human editor
             // local
-            MakeHumanPlugin::default(),            
+            MakeHumanPlugin::default(),
             CommonPlugin,
         ))
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, (setup, setup_ui))
-        //.add_systems(Update, animate_light)
+        .add_systems(
+            Update,
+            animate_light.distributive_run_if(input_toggle_active(false, KeyCode::KeyL)),
+        )
         .add_systems(
             Update,
             // stop camera controller when typing in text input
@@ -138,7 +142,6 @@ fn animate_light(
         transform.look_at(Vec3::ZERO, Vec3::Y);
     }
 }
-
 
 /// Container for editor panels
 #[derive(Component)]
@@ -245,12 +248,16 @@ fn on_human_click(
                     ..default()
                 },
                 children![(
-                    button(ButtonProps::default(), (), Spawn((Text::new("x"), ThemedText))),
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((Text::new("x"), ThemedText))
+                    ),
                     observe(close_editor_panel),
                 )],
             ),
             // Human editor
-            human_editor(human, ())            
+            human_editor(human, ())
         ],
     ));
 }
@@ -269,6 +276,6 @@ fn close_editor_panel(
         if panels.contains(e) {
             commands.entity(e).despawn();
             return;
-        }        
-    }    
+        }
+    }
 }

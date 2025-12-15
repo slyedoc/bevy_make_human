@@ -68,7 +68,7 @@ impl Plugin for MakeHumanDebugPlugin {
         app.insert_gizmo_config(
             SkeletonGizmos::default(),
             GizmoConfig {
-                enabled: false, // Off by default
+                enabled: false,   // Off by default
                 depth_bias: -1.0, // Render through geometry
                 ..Default::default()
             },
@@ -79,7 +79,7 @@ impl Plugin for MakeHumanDebugPlugin {
             JointAxesGizmos::default(),
             GizmoConfig {
                 enabled: false, // Off by default
-                depth_bias: -1.0,                
+                depth_bias: -1.0,
                 ..Default::default()
             },
         );
