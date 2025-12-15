@@ -1,12 +1,17 @@
 //! Rig definition loader - parses MakeHuman rig JSON files
 
 use bevy::{
-    asset::{AssetLoader, LoadContext, io::Reader}, platform::collections::HashMap, prelude::*
+    asset::{AssetLoader, LoadContext, io::Reader},
+    platform::collections::HashMap,
+    prelude::*,
 };
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{VertexGroups, skeleton::{Bone, Skeleton}};
+use crate::{
+    VertexGroups,
+    skeleton::{Bone, Skeleton},
+};
 
 /// Rig asset - bone definitions from MakeHuman JSON
 #[derive(Asset, TypePath, Debug, Clone, Deref, DerefMut)]
@@ -42,11 +47,7 @@ pub struct PositionDefinition {
 
 impl PositionDefinition {
     /// Calculate position using strategy
-    pub fn calculate(
-        &self,
-        mesh_vertices: &[Vec3],
-        vertex_groups: &VertexGroups,
-    ) -> Vec3 {
+    pub fn calculate(&self, mesh_vertices: &[Vec3], vertex_groups: &VertexGroups) -> Vec3 {
         let pos = match self.strategy.as_str() {
             "CUBE" => {
                 // Average all vertices in named vertex group (joint cube)
@@ -124,11 +125,7 @@ impl PositionDefinition {
 
 impl RigBones {
     /// Build skeleton from rig definition + morphed helpers + vertex groups
-    pub fn build_skeleton(
-        &self,
-        mesh_vertices: &[Vec3],
-        vertex_groups: &VertexGroups,
-    ) -> Skeleton {
+    pub fn build_skeleton(&self, mesh_vertices: &[Vec3], vertex_groups: &VertexGroups) -> Skeleton {
         let (bones, hierarchy) = self.build_bones_and_hierarchy(mesh_vertices, vertex_groups);
         Skeleton::new(bones, hierarchy)
     }
@@ -171,7 +168,6 @@ impl RigBones {
             let head = def.head.calculate(mesh_vertices, vertex_groups);
             let tail = def.tail.calculate(mesh_vertices, vertex_groups);
 
-
             bones.push(Bone {
                 name: bone_name.clone(),
                 head,
@@ -180,7 +176,10 @@ impl RigBones {
             });
 
             // Build hierarchy
-            let parent_idx = def.parent.as_ref().and_then(|p| bone_indices.get(p).copied());
+            let parent_idx = def
+                .parent
+                .as_ref()
+                .and_then(|p| bone_indices.get(p).copied());
             hierarchy.push(parent_idx);
         }
 

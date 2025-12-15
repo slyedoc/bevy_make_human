@@ -26,9 +26,8 @@ It looks for: ```assets/make_human```, supports BEVY_ASSET_ROOT.
 
 ### Adding Assets
 
-1. Download asset packs from [MakeHuman Community Asset Packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them into your `assets/make_human/` folder. 
-2. Add .meta files if needed, compair with exiting assets of simaler type to see what needs .meta files are needed.
-  - TODO: document and make script for this
+1. Download asset packs from [MakeHuman Community Asset Packs](https://static.makehumancommunity.org/assets/assetpacks.html) and unzip them into your `assets/make_human/` folder.
+2. Run `./tools/make_meta.sh` to create `.obj.meta` files for any new OBJ files.
 3. Build, and the enums will update to reflect the new assets.
 
 ### Current Assets 
@@ -44,9 +43,7 @@ I will most likely remove most these and give instructions to download and zip b
 ## TODO
 
   - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
-  - [ ] Script to create meta files for any obj and json files in assets/make_human
-  - [ ] Animat
-  ions
+  - [ ] Animations
     - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
     - [ ] Walk cycles
     - [ ] Facial rigs
@@ -69,3 +66,36 @@ Rest of the code in this repository is dual-licensed under either:
 Code is licensed under MIT or Apache-2.0 at your option.
 
 > TODO: update animation license info
+
+
+## WIP: ARKit
+
+All 52 ARKit shapes now exist. 20 need manual sculpting:
+
+  Eyes (14) - need Blender sculpting
+
+  | Left               | Right               |
+  |--------------------|---------------------|
+  | eye-blink-left     | eye-blink-right     |
+  | eye-look-down-left | eye-look-down-right |
+  | eye-look-in-left   | eye-look-in-right   |
+  | eye-look-out-left  | eye-look-out-right  |
+  | eye-look-up-left   | eye-look-up-right   |
+  | eye-squint-left    | eye-squint-right    |
+  | eye-wide-left      | eye-wide-right      |
+
+  Jaw (3) - simple vertex translations
+
+  | Shape       | Description   |
+  |-------------|---------------|
+  | jaw-forward | chin moves +Z |
+  | jaw-left    | chin moves +X |
+  | jaw-right   | chin moves -X |
+
+  Mouth (3)
+
+  | Shape       | Description         |
+  |-------------|---------------------|
+  | mouth-close | lips press together |
+  | mouth-left  | mouth shifts left   |
+  | mouth-right | mouth shifts right  |

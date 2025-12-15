@@ -7,7 +7,7 @@
 //! Each joint has 6 channels: Xposition Yposition Zposition Xrotation Yrotation Zrotation
 
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader},
     platform::collections::HashMap,
     prelude::*,
 };

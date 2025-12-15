@@ -14,7 +14,7 @@ use bevy::{
         light::{LightGizmoColor, LightGizmoConfigGroup},
     },
     input::common_conditions::input_just_pressed,
-    pbr::wireframe::{WireframeConfig, WireframePlugin},
+    pbr::wireframe::{WireframeConfig},
     picking::pointer::{PointerId, PointerInteraction},
     prelude::*,
     render::diagnostic::RenderDiagnosticsPlugin,
@@ -24,12 +24,12 @@ use bevy_egui::{EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiCont
 use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::{
     DefaultInspectorConfigPlugin,
-    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources}, quick::StateInspectorPlugin,
+    bevy_inspector::{hierarchy::SelectedEntities, ui_for_all_assets, ui_for_resources},
+    quick::StateInspectorPlugin,
 };
 #[allow(unused_imports)]
 use bevy_make_human::prelude::*;
 use std::ops::DerefMut;
-
 
 #[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub enum EditorState {
@@ -46,12 +46,12 @@ impl Plugin for EditorPlugin {
         app.add_plugins((
             EguiPlugin::default(),
             DefaultInspectorConfigPlugin,
-            StateInspectorPlugin::<MHState>::new()
-                .run_if(in_state(EditorState::Enabled)),
-            
+            StateInspectorPlugin::<MHState>::new().run_if(in_state(EditorState::Enabled)),
             PhysicsDebugPlugin,
-            #[cfg(not(target_arch = "wasm32"))]
-            WireframePlugin::default(),
+            PhysicsDiagnosticsUiPlugin,
+            // TODO: this was working, now crashes on enable
+            //#[cfg(not(target_arch = "wasm32"))]
+            //WireframePlugin::default(),
             DebugPickingPlugin,
             // Diagnostics
             EntityCountDiagnosticsPlugin::default(),
@@ -83,29 +83,23 @@ impl Plugin for EditorPlugin {
             PreUpdate,
             (
                 toggle_editor.run_if(input_just_pressed(KeyCode::F1)),
-                (
-                    toggle_physics,
-                    toggle_lighting,
-                    toggle_picking_debug,
-                    
-                )
+                (toggle_physics, toggle_lighting, toggle_picking_debug)
                     .distributive_run_if(input_just_pressed(KeyCode::F2)),
                 (
                     toggle_ui_debug,
                     toggle_aabb,
-                    #[cfg(not(target_arch = "wasm32"))]
-                    toggle_wireframe,
-                    
+                    // TODO: this was working, now crashes on enable
+                    //#[cfg(not(target_arch = "wasm32"))]
+                    //toggle_wireframe,
                 )
-                    .distributive_run_if(input_just_pressed(KeyCode::F3)),                                            
-                toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),                
+                    .distributive_run_if(input_just_pressed(KeyCode::F3)),
+                toggle_diagnostics_ui.run_if(input_just_pressed(KeyCode::F4)),
                 #[cfg(feature = "debug_draw")]
-                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),                
+                toggle_skeleton.run_if(input_just_pressed(KeyCode::F5)),
                 #[cfg(feature = "debug_draw")]
                 toggle_joint_axes.run_if(input_just_pressed(KeyCode::F6)),
             ),
         );
-        
     }
 
     fn finish(&self, app: &mut App) {
@@ -120,6 +114,7 @@ fn setup(
     state: Res<State<EditorState>>,
     mut ui_debug: ResMut<UiDebugOptions>,
     mut pick_debug: ResMut<DebugPickingMode>,
+    mut physics_ui: ResMut<PhysicsDiagnosticsUiSettings>
 ) {
     let enabled = match state.get() {
         EditorState::Enabled => true,
@@ -145,6 +140,8 @@ fn setup(
     {
         let config = config_store.config_mut::<PhysicsGizmos>().0;
         config.enabled = enabled;
+        
+        physics_ui.enabled = enabled;
     }
 
     // skeleton
@@ -191,7 +188,7 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                         Or<(
                             With<UiTransform>,
                             With<PointerId>,
-                            With<Window>,                            
+                            With<Window>,
                             With<Monitor>,
                         )>,
                     )>(world, ui, &mut selected_entities);
@@ -200,9 +197,9 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
                 egui::CollapsingHeader::new("Other").show(ui, |ui| {
                     bevy_inspector_egui::bevy_inspector::hierarchy::hierarchy_ui_filtered::<
                         Or<(
-                            With<BindingOf>,    // bevy_enhanced_input
+                            With<BindingOf>, // bevy_enhanced_input
                             With<ActionEvents>, // bevy_enhanced_input
-                            // With<GlobalRng>,    // rng
+                                             // With<GlobalRng>,    // rng
                         )>,
                     >(world, ui, &mut selected_entities);
                 });
@@ -241,7 +238,6 @@ fn inspector_ui(world: &mut World, mut selected_entities: Local<SelectedEntities
         });
 }
 
-
 fn toggle_editor(mut next_state: ResMut<NextState<EditorState>>, state: Res<State<EditorState>>) {
     next_state.set(match state.get() {
         EditorState::Enabled => EditorState::Disabled,
@@ -276,6 +272,7 @@ fn toggle_lighting(mut config_store: ResMut<GizmoConfigStore>) {
     config.enabled = !config.enabled;
 }
 
+#[allow(dead_code)]
 #[cfg(not(target_arch = "wasm32"))]
 fn toggle_wireframe(mut config: ResMut<WireframeConfig>) {
     config.global = !config.global;
@@ -352,4 +349,3 @@ fn draw_mesh_intersections(pointers: Query<&PointerInteraction>, mut gizmos: Giz
 // pub fn step(mut physics_time: ResMut<Time<Physics>>, fixed_time: Res<Time<Fixed>>) {
 //     physics_time.advance_by(fixed_time.delta());
 // }
-

@@ -1,11 +1,8 @@
 //! Skeleton and bone structures for MakeHuman characters
 
-use bevy::{
-    math::Affine3A,
-    platform::collections::HashMap,
-    prelude::*,
-};
+use bevy::{math::Affine3A, platform::collections::HashMap, prelude::*};
 
+// TODO: Clean this up, shouldn't be storing all this and using strings for everything...
 /// Component storing character skeleton - bones, hierarchy, bind pose
 #[derive(Component, Clone)]
 pub struct Skeleton {
@@ -348,92 +345,6 @@ impl Skeleton {
             .collect()
     }
 }
-
-//
-// build rig data
-//
-// let mut type_strings = HashMap::<RigType, &str>::default();
-// type_strings.insert(RigType::Default, "default");
-// type_strings.insert(RigType::Mixamo, "mixamo");
-// type_strings.insert(RigType::GameEngine, "game_engine");
-
-// let mut rig_weights = HashMap::<RigType, HashMap<&'static str, HashMap<u16, f32>>>::default();
-// let mut rig_configs = HashMap::<RigType, HashMap<&'static str, BoneData>>::default();
-
-// for (rig_type, name) in type_strings.iter() {
-//     let (rig_handle, weights_handle) = match rig_type {
-//         RigType::Default => (&rig_assets.cmu_mb_rig, &rig_assets.cmu_mb_weights),
-//         RigType::Mixamo => (&rig_assets.mixamo_rig, &rig_assets.mixamo_weights),
-//         RigType::GameEngine => (&rig_assets.game_engine_rig, &rig_assets.game_engine_weights),
-//     };
-//     let rig = rig_bones.get(rig_handle).expect("RIG ASSET LOADED");
-//     let weights = skinning_weights
-//         .get(weights_handle)
-//         .expect("RIG WEIGHTS LOADED");
-
-//     let mut weights_hashmap = HashMap::<&'static str, HashMap<u16, f32>>::default();
-//     for (bone, wts) in weights.weights.iter() {
-//         let hashmap: HashMap<u16, f32> = wts.iter().cloned().collect();
-//         weights_hashmap.insert(NAME_INTERNER.intern(bone).leak(), hashmap);
-//     }
-//     rig_weights.inse
-//     // configs
-//     rig_configs.insert(
-//         *rig_type,
-//         rig.into_iter()
-//             .map(|(k, x)| (NAME_INTERNER.intern(&k).leak(), x.into()))
-//             .collect::<HashMap<&'static str, BoneData>>(),
-//     );
-// }
-// commands.insert_resource(RigData {
-//     weights: rig_weights,
-//     configs: rig_configs,
-// });
-
-// #[derive(AssetCollection, Resource)]
-// pub struct RigAssets {
-//     // cmu_mb
-//     #[asset(path = "make_human/rigs/standard/cmu_mb/cmu_mb.rig.json")]
-//     pub cmu_mb_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/cmu_mb/cmu_mb.weights.json")]
-//     pub cmu_mb_weights: Handle<SkinningWeights>,
-
-//     // default
-//     #[asset(path = "make_human/rigs/standard/default/default.rig.json")]
-//     pub default_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/default/default.weights.json")]
-//     pub default_weights: Handle<SkinningWeights>,
-
-//     // default_no_toes
-//     #[asset(path = "make_human/rigs/standard/default_no_toes/default_no_toes.rig.json")]
-//     pub default_no_toes_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/default_no_toes/default_no_toes.weights.json")]
-//     pub default_no_toes_weights: Handle<SkinningWeights>,
-
-//     // game_engine
-//     #[asset(path = "make_human/rigs/standard/game_engine/game_engine.rig.json")]
-//     pub game_engine_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/game_engine/game_engine.weights.json")]
-//     pub game_engine_weights: Handle<SkinningWeights>,
-
-//     // game_engine_with_breast
-//     #[asset(path = "make_human/rigs/standard/game_engine_with_breast/game_engine_with_breast.rig.json")]
-//     pub game_engine_breast_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/game_engine_with_breast/game_engine_with_breast.weights.json")]
-//     pub game_engine_breast_weights: Handle<SkinningWeights>,
-
-//     // mixamo
-//     #[asset(path = "make_human/rigs/standard/mixamo/mixamo.rig.json")]
-//     pub mixamo_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/mixamo/mixamo.weights.json")]
-//     pub mixamo_weights: Handle<SkinningWeights>,
-
-//     // mixamo_unity
-//     #[asset(path = "make_human/rigs/standard/mixamo_unity/mixamo_unity.rig.json")]
-//     pub mixamo_unity_rig: Handle<RigBones>,
-//     #[asset(path = "make_human/rigs/standard/mixamo_unity/mixamo_unity.weights.json")]
-//     pub mixamo_unity_weights: Handle<SkinningWeights>,
-// }
 
 #[cfg(test)]
 mod tests {

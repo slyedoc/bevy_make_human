@@ -8,28 +8,28 @@ pub mod skeleton;
 pub mod ui;
 pub mod util;
 
-use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 pub use crate::assets::MHThumb;
+use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
     pub use crate::debug_draw::*;
 
     #[cfg(feature = "feathers")]
-    pub use crate::ui::{
-        dropdown::{DropdownOption, dropdown},
-        scroll::{ScrollProps, scroll},
-        text_input::{TextInputProps, text_input},
-    };
+    pub use crate::ui::human_editor;
 
     #[allow(unused_imports)]
     pub use crate::{
-        HumanComplete, MHState, MakeHumanPlugin, assets::*, components::*, loaders::*, skeleton::*,
-        util::*, MHThumb,
+        HumanComplete, MHState, MHThumb, MakeHumanPlugin, assets::*, components::*, loaders::*,
+        skeleton::*, util::*,
     };
 }
 
 use avian3d::prelude::*;
+#[cfg(feature = "arkit")]
+use bevy::asset::RenderAssetUsages;
+#[cfg(feature = "arkit")]
+use bevy::mesh::morph::{MeshMorphWeights, MorphAttributes, MorphTargetImage};
 use bevy::{
     animation::{AnimationTarget, AnimationTargetId},
     mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
@@ -37,6 +37,8 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, Task, futures_lite::future},
 };
 use bevy_asset_loader::prelude::*;
+#[cfg(feature = "arkit")]
+use strum::IntoEnumIterator;
 
 #[derive(Default, States, Debug, Clone, Eq, PartialEq, Hash, Reflect)]
 pub enum MHState {
@@ -58,7 +60,6 @@ pub struct MakeHumanPlugin;
 impl Plugin for MakeHumanPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            bevy_obj::ObjPlugin,
             #[cfg(feature = "debug_draw")]
             debug_draw::MakeHumanDebugPlugin,
             #[cfg(feature = "feathers")]
@@ -125,7 +126,7 @@ impl Plugin for MakeHumanPlugin {
             .init_asset::<Pose>()
             .init_asset_loader::<BvhPoseLoader>()
             // egui registration
-            .register_type::<Clothing>()
+            .register_type::<Outfit>()
             .register_type::<MHTag>()
             .register_type::<ClothingOffset>()
             .register_type::<FloorOffset>()
@@ -230,15 +231,21 @@ fn dirty_check(
             Changed<Teeth>,
             Changed<Tongue>,
             Changed<Hair>,
-            Changed<Clothing>,
+            Changed<Outfit>,
             Changed<ClothingOffset>,
             Changed<Morphs>,
             Changed<FloorOffset>,
         )>,
     >,
+    mut removed_hair: RemovedComponents<Hair>,
 ) {
     for e in query.iter() {
         commands.entity(e).insert(HumanDirty);
+    }
+    for e in removed_hair.read() {
+        if let Ok(mut ec) = commands.get_entity(e) {
+            ec.insert(HumanDirty);
+        }
     }
 }
 
@@ -265,6 +272,10 @@ struct HumanProcessingInput {
     parts: Vec<MHItemLoaded>,
 
     clothing_offset: f32,
+
+    #[cfg(feature = "arkit")]
+    /// ARKit blend shape targets (52 shapes)
+    arkit_targets: Vec<MorphTargetData>,
 }
 
 /// Result of human processing
@@ -275,6 +286,9 @@ struct HumanProcessingOutput {
     height: f32,
     /// Min Y of morphed vertices (for ground offset)
     min_y: f32,
+    #[cfg(feature = "arkit")]
+    /// ARKit morph deltas transferred to proxy mesh (52 x vertex_count)
+    arkit_morphs: Vec<Vec<Vec3>>,
 }
 
 fn human_changed(
@@ -284,12 +298,15 @@ fn human_changed(
 ) {
     for h in query.iter() {
         let mut parts = vec![];
+        if let Some(hair_item) = h.hair {
+            parts.push(MHItem::load(MHTag::Hair, hair_item, &asset_server));
+        }
         parts.push(MHItem::load(MHTag::Eyes, h.eyes, &asset_server));
         parts.push(MHItem::load(MHTag::Eyebrows, h.eyebrows, &asset_server));
         parts.push(MHItem::load(MHTag::Eyelashes, h.eyelashes, &asset_server));
         parts.push(MHItem::load(MHTag::Teeth, h.teeth, &asset_server));
         parts.push(MHItem::load(MHTag::Tongue, h.tongue, &asset_server));
-        parts.push(MHItem::load(MHTag::Hair, h.hair, &asset_server));
+        
         for clothing_item in h.clothing.iter() {
             parts.push(MHItem::load(MHTag::Clothes, clothing_item, &asset_server));
         }
@@ -329,6 +346,11 @@ fn human_changed(
             }
         }
 
+        #[cfg(feature = "arkit")]
+        let arkit_targets: Vec<Handle<MorphTargetData>> = ARKit::iter()
+            .map(|shape| asset_server.load(shape.target_path()))
+            .collect();
+
         commands
             .entity(h.entity)
             .remove::<HumanDirty>()
@@ -343,6 +365,8 @@ fn human_changed(
                 clothing_offset: h.clothing_offset.0,
                 parts,
                 morphs,
+                #[cfg(feature = "arkit")]
+                arkit_targets,
             });
     }
 }
@@ -385,6 +409,13 @@ fn loading_human_assets(
                 obj_base_assets.get(&assets.skin_obj_base).unwrap().clone(),
             );
 
+            #[cfg(feature = "arkit")]
+            let arkit_targets: Vec<MorphTargetData> = assets
+                .arkit_targets
+                .iter()
+                .filter_map(|h| morph_target_assets.get(h).cloned())
+                .collect();
+
             // Extract for task
             let input = HumanProcessingInput {
                 base_vertices: base_mesh.vertices.clone(),
@@ -403,6 +434,8 @@ fn loading_human_assets(
                 skin_proxy,
                 clothing_offset: assets.clothing_offset,
                 parts,
+                #[cfg(feature = "arkit")]
+                arkit_targets,
             };
 
             // Spawn async task
@@ -493,15 +526,50 @@ fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
         });
     let height = max_y - min_y;
 
+    #[cfg(feature = "arkit")]
+    let arkit_morphs: Vec<Vec<Vec3>> = input
+        .arkit_targets
+        .iter()
+        .map(|morph_data| {
+            proxy_obj
+                .mhid_lookup
+                .iter()
+                .map(|&obj_idx| {
+                    let binding = &proxy_asset.bindings[obj_idx as usize];
+                    let d0 = morph_data
+                        .offsets
+                        .get(&binding.triangle[0])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    let d1 = morph_data
+                        .offsets
+                        .get(&binding.triangle[1])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    let d2 = morph_data
+                        .offsets
+                        .get(&binding.triangle[2])
+                        .copied()
+                        .unwrap_or(Vec3::ZERO);
+                    // Barycentric interpolation of offsets
+                    d0 * binding.weights[0] + d1 * binding.weights[1] + d2 * binding.weights[2]
+                })
+                .collect()
+        })
+        .collect();
+
     HumanProcessingOutput {
         skeleton,
         parts,
         height,
         min_y,
+        #[cfg(feature = "arkit")]
+        arkit_morphs,
     }
 }
 
 /// Update human and trigger HumanGenerate
+#[allow(unused_mut, unused_variables)]
 fn update_human(
     mut commands: Commands,
     mut query: Query<(
@@ -512,6 +580,8 @@ fn update_human(
     )>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, children_maybe, mut task, floor_offset) in query.iter_mut() {
         if let Some(HumanProcessingOutput {
@@ -519,6 +589,8 @@ fn update_human(
             parts,
             height,
             min_y,
+            #[cfg(feature = "arkit")]
+            arkit_morphs,
         }) = future::block_on(future::poll_once(&mut task.0))
         {
             commands
@@ -603,13 +675,49 @@ fn update_human(
             for a in parts.into_iter() {
                 match a.tag {
                     MHTag::Skin => {
+                        let mut mesh = a.mesh;
+
+                        #[cfg(feature = "arkit")]
+                        {
+                            let vertex_count = mesh.count_vertices();
+                            let targets_iter = arkit_morphs.iter().map(|mesh_offsets| {
+                                mesh_offsets.iter().map(|&offset| {
+                                    MorphAttributes::new(offset, Vec3::ZERO, Vec3::ZERO)
+                                })
+                            });
+
+                            if let Ok(morph_image) = MorphTargetImage::new(
+                                targets_iter,
+                                vertex_count,
+                                RenderAssetUsages::default(),
+                            ) {
+                                let morph_handle = images.add(morph_image.0);
+                                mesh.set_morph_targets(morph_handle);
+                                if let Ok(weights) =
+                                    MeshMorphWeights::new(vec![0.0; arkit_morphs.len()])
+                                {
+                                    commands.entity(entity).insert(weights);
+                                } else {
+                                    warn!("Failed to create MeshMorphWeights for ARKit targets");
+                                }
+                            }
+                        }
+
                         commands.entity(entity).insert((
-                            Mesh3d(meshes.add(a.mesh)),
+                            Mesh3d(meshes.add(mesh)),
                             MeshMaterial3d(a.mat),
                             skinned_mesh.clone(),
                         ));
                     }
                     _ => {
+                        // Add clearcoat for glossy wet eye look
+                        #[cfg(feature = "glossy_eyes")]
+                        if a.tag == MHTag::Eyes {
+                            if let Some(mat) = materials.get_mut(&a.mat) {
+                                mat.clearcoat = 1.0;
+                                mat.clearcoat_perceptual_roughness = 0.1;
+                            }
+                        }
                         commands.spawn((
                             ChildOf(entity),
                             Name::new(format!("{}", a.tag)),

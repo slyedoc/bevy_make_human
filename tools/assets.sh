@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Script to analyze asset files in a directory.
+
 DEDUPE=false
 ASSETS_DIR="./assets"
 

@@ -1,10 +1,9 @@
 //! .thumb file loader - MakeHuman thumbnail images (PNG format)
 
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
-    image::{Image, ImageFormat, ImageType, CompressedImageFormats, ImageSampler},
+    asset::{AssetLoader, LoadContext, io::Reader},
+    image::{CompressedImageFormats, Image, ImageFormat, ImageSampler, ImageType},
     prelude::*,
-
 };
 use thiserror::Error;
 

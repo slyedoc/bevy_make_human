@@ -1,306 +1,728 @@
-use bevy::{
-    ecs::{
-        bundle::Bundle,
-        children,
-        component::Component,
-        hierarchy::{ChildOf, Children},
-        observer::On,
-        query::{Changed, With},
-        reflect::ReflectComponent,
-        spawn::{Spawn, SpawnRelated, SpawnableList},
-        system::{Commands, Query},
-    },
-    reflect::{prelude::ReflectDefault, Reflect},
-    ui::{
-        AlignItems, Display, FlexDirection, GlobalZIndex, Node, OverflowAxis,
-        PositionType, Val,
-    },
-    ui_widgets::{observe, Activate, ValueChange},
-    feathers::{
-        controls::*,
-        rounded_corners::RoundedCorners,
-        theme::{ThemeBackgroundColor, ThemedText},
-        tokens,
-    },
-    prelude::*,
+use crate::{
+    assets::*,
+    ui::{clothing::ClothingMenu, morphs::MorphMenu, scroll::*, text_input::*},
 };
+use bevy::{
+    ecs::bundle::Bundle,
+    feathers::{controls::*, rounded_corners::RoundedCorners, theme::*, tokens},
+    picking::hover::Hovered,
+    prelude::*,
+    ui_widgets::*,
+};
+use bevy_ui_text_input::TextInputContents;
+use strum::IntoEnumIterator;
 
-use super::scroll::{scroll, ScrollProps};
-
-/// Component marking the dropdown container
-#[derive(Component, Debug, Clone, Reflect)]
-#[reflect(Component, Debug, Clone)]
-pub struct Dropdown {
-    /// Whether the dropdown is currently open
-    pub is_open: bool,
-    /// Currently selected value
-    pub selected: String,
-}
-
-impl Default for Dropdown {
-    fn default() -> Self {
-        Self {
-            is_open: false,
-            selected: String::new(),
+pub fn filter_text_changed<T: Component, K: Component>(
+    filter_query: Query<(Entity, &TextInputContents), (With<T>, Changed<TextInputContents>)>,
+    parent_query: Query<&ChildOf>,
+    section_query: Query<&K>,
+    mut commands: Commands,
+) {
+    for (e, text) in filter_query.iter() {
+        for c in parent_query.iter_ancestors(e) {
+            if section_query.contains(c) {
+                commands.trigger(FilterOptions {
+                    entity: c,
+                    filter: text.get().to_string(),
+                });
+            }
         }
     }
 }
 
-/// Component marking the trigger button of a dropdown
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Reflect)]
-#[reflect(Component, Default, Debug, PartialEq, Clone)]
-pub struct DropdownTrigger;
+#[derive(Component)]
+pub struct Dropdown;
 
-/// Component marking the text inside the dropdown trigger
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Reflect)]
-#[reflect(Component, Default, Debug, PartialEq, Clone)]
-pub struct DropdownTriggerText;
+#[derive(Component)]
+struct DropdownButton;
 
-/// Component marking the options container (the list that appears)
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Reflect)]
-#[reflect(Component, Default, Debug, PartialEq, Clone)]
-pub struct DropdownOptions;
+#[derive(Component)]
+pub struct DropdownMenu;
 
-/// Component for individual dropdown options
-#[derive(Component, Debug, Clone, Reflect)]
-#[reflect(Component, Debug, Clone)]
-pub struct DropdownOption {
-    /// The value of this option
-    pub value: String,
+#[derive(Component)]
+pub struct DropdownFilterInput;
+
+#[derive(Component)]
+struct DropdownOptionsContainer;
+
+#[derive(EntityEvent)]
+struct DropdownSelect<T: Component + Copy + Send + Sync + 'static> {
+    entity: Entity,
+    value: T,
 }
 
-/// Parameters for the dropdown template
-pub struct DropdownProps {
-    /// Width of the dropdown
-    pub width: Val,
-    /// Maximum height of the options list
-    pub max_height: Val,
-    /// Rounded corners options
-    pub corners: RoundedCorners,
-    /// Initial selected value (None shows "Select...")
-    pub initial_value: Option<String>,
+#[derive(EntityEvent)]
+struct DropdownSelectOptional<T: Component + Copy + Send + Sync + 'static> {
+    entity: Entity,
+    value: Option<T>,
 }
 
-impl Default for DropdownProps {
-    fn default() -> Self {
-        Self {
-            width: Val::Px(200.0),
-            max_height: Val::Px(300.0),
-            corners: RoundedCorners::default(),
-            initial_value: None,
-        }
-    }
+#[derive(EntityEvent)]
+struct DropdownClose {
+    entity: Entity,
 }
 
-/// Template function to spawn a dropdown.
-///
-/// # Arguments
-/// * `props` - construction properties for the dropdown.
-/// * `overrides` - a bundle of components that are merged in.
-/// * `options` - the dropdown options as a SpawnableList.
-///
-/// # Examples
-/// ```ignore
-/// dropdown(
-///     DropdownProps::default(),
-///     (),
-///     Children::spawn(SpawnIter(
-///         voices.iter().map(|v| dropdown_option(v))
-///     ))
-/// )
-/// ```
-pub fn dropdown<C: SpawnableList<ChildOf> + Send + Sync + 'static, B: Bundle>(
-    props: DropdownProps,
-    overrides: B,
-    options: C,
+#[derive(EntityEvent)]
+pub struct FilterOptions {
+    pub entity: Entity,
+    pub filter: String,
+}
+
+pub fn dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
+    human_entity: Entity,
+    value: T,
 ) -> impl Bundle {
-    let initial_text = props
-        .initial_value
-        .clone()
-        .unwrap_or_else(|| "Select...".to_string());
-    let selected = props.initial_value.clone().unwrap_or_default();
-
+    let type_name = std::any::type_name::<T>()
+        .split("::")
+        .last()
+        .unwrap_or_default();
     (
+        Name::new(format!("Dropdown{}", type_name)),
+        Dropdown,
         Node {
-            width: props.width,
             flex_direction: FlexDirection::Column,
-            position_type: PositionType::Relative,
-            ..Default::default()
+            ..default()
         },
-        Dropdown {
-            is_open: false,
-            selected,
-        },
-        overrides,
         children![
-            // Trigger button
             (
-                button(
-                    ButtonProps {
-                        corners: props.corners.clone(),
-                        ..Default::default()
-                    },
-                    DropdownTrigger,
-                    Spawn((Text::new(initial_text), ThemedText, DropdownTriggerText)),
-                ),
-                observe(on_trigger_click),
-            ),
-            // Options container (hidden by default)
-            (
-                Node {
-                    position_type: PositionType::Absolute,
-                    top: Val::Percent(100.0), // Position below trigger
-                    left: Val::Px(0.0),
-                    width: Val::Percent(100.0),
-                    display: Display::None, // Hidden by default
-                    flex_direction: FlexDirection::Column,
-                    ..Default::default()
+                Text::new(type_name),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
                 },
-                DropdownOptions,
-                GlobalZIndex(1000),
-                ThemeBackgroundColor(tokens::BUTTON_BG),
-                children![scroll(
-                    ScrollProps {
-                        width: Val::Percent(100.0),
-                        height: props.max_height,
-                        overflow: bevy::ui::Overflow {
-                            x: OverflowAxis::Visible,
-                            y: OverflowAxis::Scroll,
-                        },
-                        flex_direction: FlexDirection::Column,
-                        corners: props.corners,
-                        align_items: AlignItems::Stretch,
-                    },
+                ThemedText
+            ),
+            (
+                Name::new("DropdownButton"),
+                DropdownButton,
+                button(
+                    ButtonProps::default(),
                     (),
-                    Children::spawn(options),
-                )],
+                    Spawn((Text::new(value.to_string()), ThemedText))
+                ),
+                observe(on_open_dropdown::<T>),
             ),
         ],
+        observe(on_dropdown_select::<T>(human_entity)),
+        observe(on_dropdown_close),
+        observe(on_dropdown_filter::<T>),
     )
 }
 
-/// Helper function to create a dropdown option
-pub fn dropdown_option(value: impl Into<String>) -> impl Bundle {
-    let value = value.into();
+pub fn dropdown_with_thumb<
+    T: Component + Copy + IntoEnumIterator + ToString + MHThumb + Send + Sync + 'static,
+>(
+    human_entity: Entity,
+    value: T,
+) -> impl Bundle {
+    let type_name = std::any::type_name::<T>()
+        .split("::")
+        .last()
+        .unwrap_or_default();
     (
-        button(
-            ButtonProps::default(),
-            (),
-            Spawn((Text::new(value.clone()), ThemedText)),
-        ),
-        DropdownOption { value },
-        observe(on_option_click),
+        Dropdown,
+        Name::new(format!("Dropdown {}", type_name)),
+        Node {
+            padding: UiRect::top(Val::Px(8.0)),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        children![
+            (
+                Text::new(type_name),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
+                },
+                ThemedText
+            ),
+            (
+                Name::new("DropdownButton"),
+                DropdownButton,
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((Text::new(value.to_string()), ThemedText))
+                ),
+                observe(on_open_dropdown_thumb::<T>),
+            ),
+        ],
+        observe(on_dropdown_select::<T>(human_entity)),
+        observe(on_dropdown_close),
+        observe(on_dropdown_filter::<T>),
     )
 }
 
-/// Observer that handles trigger button clicks to toggle dropdown
-fn on_trigger_click(
-    trigger: On<Pointer<Click>>,
-    trigger_query: Query<&ChildOf, With<DropdownTrigger>>,
-    mut dropdown_query: Query<&mut Dropdown>,
-    child_of_query: Query<&ChildOf>,
+pub fn dropdown_optional_with_thumb<
+    T: Component + Copy + IntoEnumIterator + ToString + MHThumb + Send + Sync + 'static,
+>(
+    human_entity: Entity,
+    value: Option<&T>,
+) -> impl Bundle {
+    let type_name = std::any::type_name::<T>()
+        .split("::")
+        .last()
+        .unwrap_or_default();
+    let label = value.map_or("None".to_string(), |v| v.to_string());
+    (
+        Dropdown,
+        Name::new(format!("DropdownOptional {}", type_name)),
+        Node {
+            padding: UiRect::top(Val::Px(8.0)),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        children![
+            (
+                Text::new(type_name),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
+                },
+                ThemedText
+            ),
+            (
+                Name::new("DropdownButton"),
+                DropdownButton,
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((Text::new(label), ThemedText))
+                ),
+                observe(on_open_dropdown_optional_thumb::<T>),
+            ),
+        ],
+        observe(on_dropdown_select_optional::<T>(human_entity)),
+        observe(on_dropdown_close),
+        observe(on_dropdown_filter_optional::<T>),
+    )
+}
+
+fn on_dropdown_select_optional<
+    T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static,
+>(
+    human_entity: Entity,
+) -> impl FnMut(On<DropdownSelectOptional<T>>, Commands, Query<&DropdownButton>, Query<&Children>) {
+    move |trigger: On<DropdownSelectOptional<T>>,
+          mut commands: Commands,
+          dropdown_button_query: Query<&DropdownButton>,
+          children_query: Query<&Children>| {
+        commands.trigger(DropdownClose {
+            entity: trigger.entity,
+        });
+
+        match trigger.value {
+            Some(value) => {
+                commands.entity(human_entity).insert(value);
+            }
+            None => {
+                commands.entity(human_entity).remove::<T>();
+            }
+        }
+
+        // Update button label
+        let label = trigger.value.map_or("None".to_string(), |v| v.to_string());
+        for e in children_query.iter_descendants(trigger.entity) {
+            if dropdown_button_query.get(e).is_ok() {
+                commands
+                    .entity(e)
+                    .despawn_children()
+                    .with_child((Text::new(label), ThemedText));
+                break;
+            }
+        }
+    }
+}
+
+fn on_option_click_optional<
+    T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static,
+>(
+    value: Option<T>,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&ChildOf>, Query<&Dropdown>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          parent_query: Query<&ChildOf>,
+          dropdown_query: Query<&Dropdown>| {
+        let parent = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|c| dropdown_query.get(*c).is_ok())
+            .unwrap();
+        commands.trigger(DropdownSelectOptional {
+            entity: parent,
+            value,
+        });
+    }
+}
+
+/// Marker for "None" option row (doesn't have T component)
+#[derive(Component)]
+struct DropdownNoneOption;
+
+fn on_dropdown_filter_optional<
+    T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static,
+>(
+    trigger: On<FilterOptions>,
+    children_query: Query<&Children>,
+    dropdown_options_container: Query<Entity, With<DropdownOptionsContainer>>,
+    mut query: Query<(&T, &mut Node)>,
+    mut none_query: Query<&mut Node, (With<DropdownNoneOption>, Without<T>)>,
 ) {
+    for child in children_query.iter_descendants(trigger.entity) {
+        if let Ok(container) = dropdown_options_container.get(child) {
+            for c in children_query.iter_descendants(container) {
+                // Handle T options
+                if let Ok((value, mut node)) = query.get_mut(c) {
+                    let label = value.to_string();
+                    node.display = if matches_filter(&label, &trigger.filter) {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    };
+                }
+                // Handle None option
+                if let Ok(mut node) = none_query.get_mut(c) {
+                    node.display = if matches_filter("none", &trigger.filter) {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    };
+                }
+            }
+            break;
+        }
+    }
+}
 
-    // Find parent dropdown - may need to walk up hierarchy if Click bubbled from child
-    let mut current = trigger.entity;
-
-    // First try direct: is current entity the trigger?
-    if let Ok(child_of) = trigger_query.get(current) {
-        if let Ok(mut dropdown) = dropdown_query.get_mut(child_of.parent()) {
-            dropdown.is_open = !dropdown.is_open;
+fn on_open_dropdown_optional_thumb<
+    T: Component + Copy + IntoEnumIterator + ToString + MHThumb + Send + Sync + 'static,
+>(
+    trigger: On<Pointer<Click>>,
+    children_query: Query<&Children>,
+    dropdown_open: Query<&DropdownMenu>,
+    parent_query: Query<&ChildOf>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>,
+) {
+    let child_of = parent_query.get(trigger.entity).unwrap();
+    for child in children_query.iter_descendants(child_of.0) {
+        if dropdown_open.get(child).is_ok() {
             return;
         }
     }
+    for menu in all_menus.iter() {
+        commands.entity(menu).despawn();
+    }
 
-    // Walk up hierarchy to find DropdownTrigger
-    while let Ok(child_of) = child_of_query.get(current) {
-        current = child_of.parent();
-        if let Ok(trigger_child_of) = trigger_query.get(current) {
-            if let Ok(mut dropdown) = dropdown_query.get_mut(trigger_child_of.parent()) {
-                dropdown.is_open = !dropdown.is_open;
-                return;
+    let options: Vec<_> = T::iter()
+        .map(|value| {
+            let label = value.to_string();
+            let image = asset_server.load::<Image>(value.thumb());
+            (
+                Name::new(label.clone()),
+                Node {
+                    width: Val::Percent(100.0),
+                    align_items: AlignItems::Start,
+                    min_height: Val::Px(28.0),
+                    ..default()
+                },
+                value,
+                children![
+                    (
+                        Node {
+                            width: Val::Px(24.0),
+                            height: Val::Px(24.0),
+                            ..default()
+                        },
+                        ImageNode { image, ..default() }
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new(label), ThemedText))
+                        ),
+                        observe(on_option_click_optional(Some(value)))
+                    ),
+                ],
+            )
+        })
+        .collect();
+
+    commands.entity(child_of.0).with_child((
+        DropdownMenu,
+        Name::new("DropdownOpen"),
+        Node {
+            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            ..default()
+        },
+        ThemeBackgroundColor(tokens::WINDOW_BG),
+        children![
+            (
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![
+                    (
+                        DropdownFilterInput,
+                        text_input(
+                            TextInputProps {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(24.0),
+                                placeholder: "Filter...".to_string(),
+                                corners: RoundedCorners::Top,
+                                ..default()
+                            },
+                            TextInputContents::default()
+                        )
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("×"), ThemedText))
+                        ),
+                        observe(on_close_dropdown_click)
+                    ),
+                ]
+            ),
+            // None option (outside scroll, always visible at top)
+            (
+                Name::new("None"),
+                DropdownNoneOption,
+                Node {
+                    width: Val::Percent(100.0),
+                    align_items: AlignItems::Start,
+                    min_height: Val::Px(28.0),
+                    padding: UiRect::horizontal(Val::Px(4.0)),
+                    ..default()
+                },
+                children![(
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((Text::new("None"), ThemedText))
+                    ),
+                    observe(on_option_click_optional::<T>(None))
+                )],
+            ),
+            // Scrollable value options
+            scroll(
+                ScrollProps::vertical(px(400.0)),
+                (DropdownOptionsContainer, Name::new("OptionsContainer")),
+                Children::spawn(SpawnIter(options.into_iter()))
+            ),
+        ],
+        Hovered(false),
+    ));
+}
+
+fn on_dropdown_select<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
+    human_entity: Entity,
+) -> impl FnMut(On<DropdownSelect<T>>, Commands, Query<&DropdownButton>, Query<&Children>) {
+    move |trigger: On<DropdownSelect<T>>,
+          mut commands: Commands,
+          dropdown_button_query: Query<&DropdownButton>,
+          children_query: Query<&Children>| {
+        commands.trigger(DropdownClose {
+            entity: trigger.entity,
+        });
+        commands.entity(human_entity).insert(trigger.value);
+
+        // Update button label
+        for e in children_query.iter_descendants(trigger.entity) {
+            if dropdown_button_query.get(e).is_ok() {
+                commands
+                    .entity(e)
+                    .despawn_children()
+                    .with_child((Text::new(trigger.value.to_string()), ThemedText));
+                break;
             }
         }
     }
 }
 
-/// Observer that handles option selection
-fn on_option_click(
-    trigger: On<Activate>,
-    option_query: Query<(&DropdownOption, &ChildOf)>,
-    mut dropdown_query: Query<(&mut Dropdown, &Children)>,
-    child_of_query: Query<&ChildOf>,
-    trigger_query: Query<&Children, With<DropdownTrigger>>,
-    mut text_query: Query<&mut Text, With<DropdownTriggerText>>,
+fn on_option_click<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
+    value: T,
+) -> impl FnMut(On<Pointer<Click>>, Commands, Query<&ChildOf>, Query<&Dropdown>) {
+    move |trigger: On<Pointer<Click>>,
+          mut commands: Commands,
+          parent_query: Query<&ChildOf>,
+          dropdown_query: Query<&Dropdown>| {
+        let parent = parent_query
+            .iter_ancestors(trigger.entity)
+            .find(|c| dropdown_query.get(*c).is_ok())
+            .unwrap();
+        commands.trigger(DropdownSelect {
+            entity: parent,
+            value,
+        });
+    }
+}
+
+fn on_dropdown_close(
+    trigger: On<DropdownClose>,
     mut commands: Commands,
+    children_query: Query<&Children>,
+    dropdown_open: Query<&DropdownMenu>,
 ) {
-    let Ok((option, current_parent)) = option_query.get(trigger.entity) else {
-        return;
-    };
+    for child in children_query.get(trigger.entity).unwrap().iter() {
+        if dropdown_open.get(child).is_ok() {
+            commands.entity(child).despawn();
+        }
+    }
+}
 
-    // Walk up the hierarchy to find the dropdown
-    let mut current = current_parent.parent();
-    loop {
-        if let Ok((mut dropdown, dropdown_children)) = dropdown_query.get_mut(current) {
-            // Update selected value
-            dropdown.selected = option.value.clone();
+fn on_close_dropdown_click(
+    trigger: On<Pointer<Click>>,
+    mut commands: Commands,
+    parent_query: Query<&ChildOf>,
+    dropdown_query: Query<&Dropdown>,
+) {
+    if let Some(dropdown) = parent_query
+        .iter_ancestors(trigger.entity)
+        .find(|e| dropdown_query.get(*e).is_ok())
+    {
+        commands.trigger(DropdownClose { entity: dropdown });
+    }
+}
 
-            // Close dropdown
-            dropdown.is_open = false;
+/// Check if label matches all filter terms (space-separated)
+/// Prefix term with `-` to exclude (e.g. "old -female" matches "old" but not "female")
+pub fn matches_filter(label: &str, filter: &str) -> bool {
+    if filter.is_empty() {
+        return true;
+    }
+    let label = label.to_lowercase();
+    filter.to_lowercase().split_whitespace().all(|term| {
+        if let Some(excluded) = term.strip_prefix('-') {
+            !excluded.is_empty() && !label.contains(excluded)
+        } else {
+            label.contains(term)
+        }
+    })
+}
 
-            // Find the trigger button in this specific dropdown's children
-            for &child in dropdown_children {
-                if let Ok(trigger_children) = trigger_query.get(child) {
-                    // Find the text inside this trigger
-                    for &text_child in trigger_children {
-                        if let Ok(mut text) = text_query.get_mut(text_child) {
-                            text.0 = option.value.clone();
-                        }
-                    }
+fn on_dropdown_filter<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
+    trigger: On<FilterOptions>,
+    children_query: Query<&Children>,
+    dropdown_options_container: Query<Entity, With<DropdownOptionsContainer>>,
+    mut query: Query<(&T, &mut Node)>,
+) {
+    for child in children_query.iter_descendants(trigger.entity) {
+        if let Ok(container) = dropdown_options_container.get(child) {
+            for c in children_query.iter_descendants(container) {
+                if let Ok((value, mut node)) = query.get_mut(c) {
+                    let label = value.to_string();
+                    node.display = if matches_filter(&label, &trigger.filter) {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    };
                 }
             }
-
-            // Emit ValueChange event on the dropdown entity
-            let value = option.value.clone();
-            commands.entity(current).trigger(|entity| ValueChange {
-                source: entity,
-                value,
-            });
-            break;
-        }
-
-        // Try to go up one more level
-        if let Ok(child_of) = child_of_query.get(current) {
-            current = child_of.parent();
-        } else {
             break;
         }
     }
 }
 
-/// System to update dropdown visibility based on is_open state
-pub fn update_dropdown_visibility(
-    changed_dropdowns: Query<(&Dropdown, &Children), Changed<Dropdown>>,
-    trigger_query: Query<&DropdownTrigger>,
-    mut style_query: Query<&mut Node, With<DropdownOptions>>,
+fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync + 'static>(
+    trigger: On<Pointer<Click>>,
+    children_query: Query<&Children>,
+    dropdown_open: Query<&DropdownMenu>,
+    parent_query: Query<&ChildOf>,
+    mut commands: Commands,
+    all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>,
 ) {
-    for (dropdown, children) in changed_dropdowns.iter() {
-        // Find the options container (it's the second child after the trigger)
-        for &child in children {
-            // Skip the trigger
-            if trigger_query.get(child).is_ok() {
-                continue;
-            }
-
-            // This should be the options container
-            if let Ok(mut node) = style_query.get_mut(child) {
-                node.display = if dropdown.is_open {
-                    Display::Flex
-                } else {
-                    Display::None
-                };
-            }
+    let child_of = parent_query.get(trigger.entity).unwrap();
+    for child in children_query.iter_descendants(child_of.0) {
+        if dropdown_open.get(child).is_ok() {
+            return;
         }
     }
+    for menu in all_menus.iter() {
+        commands.entity(menu).despawn();
+    }
+
+    let options: Vec<_> = T::iter()
+        .map(|value| {
+            let label = value.to_string();
+            (
+                Name::new(label.clone()),
+                Node {
+                    width: Val::Percent(100.0),
+                    min_height: Val::Px(28.0),
+                    ..default()
+                },
+                value,
+                children![(
+                    button(
+                        ButtonProps::default(),
+                        (),
+                        Spawn((Text::new(label), ThemedText))
+                    ),
+                    observe(on_option_click(value))
+                )],
+            )
+        })
+        .collect();
+
+    commands.entity(child_of.0).with_child((
+        DropdownMenu,
+        Name::new("DropdownOpen"),
+        Node {
+            padding: UiRect::top(Val::Px(4.0)),
+            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            ..default()
+        },
+        ThemeBackgroundColor(tokens::BUTTON_BG),
+        children![
+            (
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![
+                    (
+                        DropdownFilterInput,
+                        text_input(
+                            TextInputProps {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(24.0),
+                                placeholder: "Filter...".to_string(),
+                                corners: RoundedCorners::Top,
+                                ..default()
+                            },
+                            TextInputContents::default()
+                        )
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("×"), ThemedText))
+                        ),
+                        observe(on_close_dropdown_click)
+                    ),
+                ]
+            ),
+            scroll(
+                ScrollProps::vertical(px(400.0)),
+                (DropdownOptionsContainer, Name::new("OptionsContainer")),
+                Children::spawn(SpawnIter(options.into_iter()))
+            ),
+        ],
+        Hovered(false),
+    ));
 }
 
+fn on_open_dropdown_thumb<
+    T: Component + Copy + IntoEnumIterator + ToString + MHThumb + Send + Sync + 'static,
+>(
+    trigger: On<Pointer<Click>>,
+    children_query: Query<&Children>,
+    dropdown_open: Query<&DropdownMenu>,
+    parent_query: Query<&ChildOf>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    all_menus: Query<Entity, Or<(With<DropdownMenu>, With<ClothingMenu>, With<MorphMenu>)>>,
+) {
+    let child_of = parent_query.get(trigger.entity).unwrap();
+    for child in children_query.iter_descendants(child_of.0) {
+        if dropdown_open.get(child).is_ok() {
+            return;
+        }
+    }
+    for menu in all_menus.iter() {
+        commands.entity(menu).despawn();
+    }
+
+    let options: Vec<_> = T::iter()
+        .map(|value| {
+            let label = value.to_string();
+            let image = asset_server.load::<Image>(value.thumb());
+            (
+                Name::new(label.clone()),
+                Node {
+                    width: Val::Percent(100.0),
+                    align_items: AlignItems::Start,
+                    min_height: Val::Px(28.0),
+                    ..default()
+                },
+                value,
+                children![
+                    (
+                        Node {
+                            width: Val::Px(24.0),
+                            height: Val::Px(24.0),
+                            ..default()
+                        },
+                        ImageNode { image, ..default() }
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new(label), ThemedText))
+                        ),
+                        observe(on_option_click(value))
+                    ),
+                ],
+            )
+        })
+        .collect();
+
+    commands.entity(child_of.0).with_child((
+        DropdownMenu,
+        Name::new("DropdownOpen"),
+        Node {
+            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            ..default()
+        },
+        ThemeBackgroundColor(tokens::WINDOW_BG),
+        children![
+            (
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    width: Val::Percent(100.0),
+                    ..default()
+                },
+                children![
+                    (
+                        DropdownFilterInput,
+                        text_input(
+                            TextInputProps {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(24.0),
+                                placeholder: "Filter...".to_string(),
+                                corners: RoundedCorners::Top,
+                                ..default()
+                            },
+                            TextInputContents::default()
+                        )
+                    ),
+                    (
+                        button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("×"), ThemedText))
+                        ),
+                        observe(on_close_dropdown_click)
+                    ),
+                ]
+            ),
+            scroll(
+                ScrollProps::vertical(px(400.0)),
+                (DropdownOptionsContainer, Name::new("OptionsContainer")),
+                Children::spawn(SpawnIter(options.into_iter()))
+            ),
+        ],
+        Hovered(false),
+    ));
+}

@@ -1,7 +1,8 @@
 use bevy::{
     asset::{AssetLoader, LoadContext, io::Reader},
     platform::collections::HashMap,
-    prelude::*, tasks::ConditionalSendFuture,
+    prelude::*,
+    tasks::ConditionalSendFuture,
 };
 use std::io::{BufRead, BufReader};
 use thiserror::Error;
@@ -44,6 +45,13 @@ impl AssetLoader for MorphTargetLoader {
 
             for (line_num, line) in buf_reader.lines().enumerate() {
                 let line = line?;
+                let line = line.trim();
+
+                // Skip empty lines and comments
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+
                 let parts: Vec<&str> = line.split_whitespace().collect();
 
                 if parts.len() != 4 {
@@ -53,33 +61,34 @@ impl AssetLoader for MorphTargetLoader {
                     });
                 }
 
-                let vertex_idx: u32 = parts[0].parse().map_err(|e| {
-                    MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Invalid vertex index: {}", e),
-                    }
-                })?;
+                let vertex_idx: u32 =
+                    parts[0]
+                        .parse()
+                        .map_err(|e| MorphTargetLoaderError::Parse {
+                            line: line_num + 1,
+                            msg: format!("Invalid vertex index: {}", e),
+                        })?;
 
-                let x: f32 = parts[1].parse().map_err(|e| {
-                    MorphTargetLoaderError::Parse {
+                let x: f32 = parts[1]
+                    .parse()
+                    .map_err(|e| MorphTargetLoaderError::Parse {
                         line: line_num + 1,
                         msg: format!("Invalid x offset: {}", e),
-                    }
-                })?;
+                    })?;
 
-                let y: f32 = parts[2].parse().map_err(|e| {
-                    MorphTargetLoaderError::Parse {
+                let y: f32 = parts[2]
+                    .parse()
+                    .map_err(|e| MorphTargetLoaderError::Parse {
                         line: line_num + 1,
                         msg: format!("Invalid y offset: {}", e),
-                    }
-                })?;
+                    })?;
 
-                let z: f32 = parts[3].parse().map_err(|e| {
-                    MorphTargetLoaderError::Parse {
+                let z: f32 = parts[3]
+                    .parse()
+                    .map_err(|e| MorphTargetLoaderError::Parse {
                         line: line_num + 1,
                         msg: format!("Invalid z offset: {}", e),
-                    }
-                })?;
+                    })?;
 
                 // Scale to meters (0.1x), negate X and Z to match base mesh
                 const SCALE: f32 = 0.1;

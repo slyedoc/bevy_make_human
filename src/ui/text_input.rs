@@ -5,13 +5,15 @@ use bevy::feathers::{
     theme::{ThemeBackgroundColor, ThemeBorderColor, ThemeFontColor},
     tokens,
 };
-use bevy::input_focus::{tab_navigation::TabIndex, InputFocus};
+use bevy::input_focus::{InputFocus, tab_navigation::TabIndex};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui::{AlignItems, Display, FlexDirection, Node, UiRect, Val};
 
 use bevy_enhanced_input::prelude::ContextActivity;
-use bevy_ui_text_input::{TextInputBuffer, TextInputMode, TextInputNode, TextInputPrompt, TextInputStyle};
+use bevy_ui_text_input::{
+    TextInputBuffer, TextInputMode, TextInputNode, TextInputPrompt, TextInputStyle,
+};
 
 pub struct TextInputProps {
     pub width: Val,
@@ -95,8 +97,7 @@ pub fn handle_text_input_focus<T>(
     text_input_query: Query<&TextInputBuffer>,
     context_query: Query<Entity, With<T>>,
     mut commands: Commands,
-)
-where
+) where
     T: Component,
 {
     let Ok(context_entity) = context_query.single() else {
@@ -107,13 +108,19 @@ where
         // Check if the focused entity is a text input
         if text_input_query.contains(focused_entity) {
             // Disable context when text input has focus
-            commands.entity(context_entity).insert(ContextActivity::<T>::INACTIVE);
+            commands
+                .entity(context_entity)
+                .insert(ContextActivity::<T>::INACTIVE);
         } else {
             // Enable context if focused entity is not a text input
-            commands.entity(context_entity).insert(ContextActivity::<T>::ACTIVE);
+            commands
+                .entity(context_entity)
+                .insert(ContextActivity::<T>::ACTIVE);
         }
     } else {
         // Enable context when nothing has focus
-        commands.entity(context_entity).insert(ContextActivity::<T>::ACTIVE);
+        commands
+            .entity(context_entity)
+            .insert(ContextActivity::<T>::ACTIVE);
     }
 }

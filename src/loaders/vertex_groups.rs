@@ -1,7 +1,9 @@
 //! Vertex groups loader - parses basemesh vertex group definitions
 
 use bevy::{
-    asset::{AssetLoader, LoadContext, io::Reader}, platform::collections::HashMap, prelude::*
+    asset::{AssetLoader, LoadContext, io::Reader},
+    platform::collections::HashMap,
+    prelude::*,
 };
 use serde::Deserialize;
 use thiserror::Error;
@@ -20,7 +22,7 @@ pub struct VertexGroups(pub HashMap<String, Vec<[usize; 2]>>);
 #[derive(Debug, Deserialize)]
 struct VertexGroupsJson {
     #[serde(flatten)]
-    groups: HashMap<String, Vec<[usize; 2]>>, 
+    groups: HashMap<String, Vec<[usize; 2]>>,
 }
 
 impl VertexGroups {

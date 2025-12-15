@@ -14,9 +14,9 @@ pub struct HumanQuery {
     pub eyelashes: &'static Eyelashes,
     pub teeth: &'static Teeth,
     pub tongue: &'static Tongue,
-    pub hair: &'static Hair,
+    pub hair: Option<&'static Hair>,
     pub morphs: &'static Morphs,
-    pub clothing: &'static Clothing,
+    pub clothing: &'static Outfit,
     pub floor_offset: &'static FloorOffset,
     pub clothing_offset: &'static ClothingOffset,
 }
@@ -27,15 +27,17 @@ pub struct HumanQuery {
     Rig,
     SkinMesh,
     SkinMaterial,
+    Hair,
     Eyes,
     Eyebrows,
     Eyelashes,
-    Clothing,
+    Teeth,
+    Tongue,
+    Outfit,
     ClothingOffset,
     FloorOffset,
     Morphs,
-    HumanDirty, // will trigger a rebuild when spawned
-    // bevy
+    HumanDirty, // will trigger a generate when spawned        
     Transform,
     Visibility,
 )]
@@ -51,7 +53,7 @@ pub struct HumanDirty;
 
 // Clothing is the only multi-item part, needs wrapper
 #[derive(Component, Clone, Default, Debug, Reflect, Deref, DerefMut)]
-pub struct Clothing(pub Vec<ClothingAsset>);
+pub struct Outfit(pub Vec<Clothing>);
 
 /// Uses normals to offset clothing away from skin, hack to reduce z-fighting
 // TODO: replace with Delete Vertex Groups
@@ -62,7 +64,9 @@ pub struct ClothingOffset(
 );
 
 impl From<f32> for ClothingOffset {
-    fn from(v: f32) -> Self { Self(v) }
+    fn from(v: f32) -> Self {
+        Self(v)
+    }
 }
 
 /// Vertical offset to adjust for floor contact (shoes, bare feet, etc)
@@ -73,7 +77,9 @@ pub struct FloorOffset(
 );
 
 impl From<f32> for FloorOffset {
-    fn from(v: f32) -> Self { Self(v) }
+    fn from(v: f32) -> Self {
+        Self(v)
+    }
 }
 
 #[derive(Component, Clone, Debug, Default, Deref, DerefMut, Reflect)]

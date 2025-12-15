@@ -1,15 +1,15 @@
-use bevy::prelude::*;
 use avian3d::prelude::*;
+use bevy::prelude::*;
 use bevy_make_human::prelude::*;
 
 fn main() -> AppExit {
     App::new()
         .add_plugins((
-            DefaultPlugins, 
+            DefaultPlugins,
             PhysicsPlugins::default(),
-            MakeHumanPlugin::default(),            
+            MakeHumanPlugin::default(),
         ))
-        .add_systems(Startup, setup)        
+        .add_systems(Startup, setup)
         .run()
 }
 
@@ -18,7 +18,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn((        
+    commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 3., -5.0).looking_at(Vec3::new(0.0, 1.4, 0.0), Vec3::Y),
     ));
@@ -54,13 +54,14 @@ fn setup(
         Eyelashes::Eyelashes01,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        Clothing(vec![
-             ClothingAsset::ToigoMaleSuit3,
-             ClothingAsset::ToigoAnkleBootsMale,
+        Outfit(vec![
+            Clothing::ToigoMaleSuit3,
+            Clothing::ToigoAnkleBootsMale,
         ]),
-        Morphs(vec![
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianMaleYoung), 1.0),
-        ]),
+        Morphs(vec![Morph::new(
+            MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),
+            1.0,
+        )]),
         Transform::from_xyz(-1.0, 0.0, 0.0),
     ));
 
@@ -76,11 +77,9 @@ fn setup(
         Eyelashes::Eyelashes04,
         Teeth::TeethBase,
         Tongue::Tongue01,
-        Clothing(vec![
-             ClothingAsset::ElvsGoddessDress8,
-        ]),
+        Outfit(vec![Clothing::ElvsGoddessDress8]),
         Morphs(vec![
-            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),
+            Morph::new(MorphTarget::Macro(MacroMorph::CaucasianFemaleYoung), 1.0),            
         ]),
         Transform::from_xyz(1.0, 0.0, 0.0),
     ));

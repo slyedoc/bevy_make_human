@@ -45,7 +45,11 @@ fn on_insert_camera(
     query: Query<&CameraFree>,
     mut commands: Commands,
 ) {
-    let CameraFree { normal_speed, sprint_speed, crawl_speed } = *query.get(trigger.entity).unwrap();
+    let CameraFree {
+        normal_speed,
+        sprint_speed,
+        crawl_speed,
+    } = *query.get(trigger.entity).unwrap();
 
     commands
         .entity(trigger.entity)
