@@ -1,6 +1,7 @@
 use crate::{components::*, loaders::*};
 use bevy::prelude::*;
 use bevy_inspector_egui::{inspector_options::std_options::NumberDisplay, prelude::*};
+use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use strum::{Display, EnumCount, EnumIter, EnumProperty, IntoEnumIterator};
 

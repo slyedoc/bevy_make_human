@@ -2,10 +2,12 @@
 
 Customizable humanoid characters in Bevy.
 
-[make huamn](https://static.makehumancommunity.org/index.html)
+Based on [make huamn](https://static.makehumancommunity.org/index.html) and 
 [mpfb2 repo](https://github.com/makehumancommunity/mpfb2.git)
 
 There is another bevy plugin for this, [Humentity](https://github.com/emberlightstudios/Humentity), that you should check out.
+
+> This is very early WIP, expect breaking changes, missing features and bugs.
 
 ## TLDR; 
 
@@ -15,9 +17,9 @@ You will need to copy assets/make_human from this repo to your own project's ass
 
 ## Asset Enums
 
-I liked the idea of supporting any assets just by letting users drop them in the right folders and a decade plus of community assets, tuturials and tools that bevy users can utilize.  Having to use string paths to access assets is error prone and lead to runtime errors instead of compile time.
+I liked the idea of supporting any assets just by letting users drop them in the right folders and a decade plus of community assets, tuturials and tools that bevy users can utilize.  But using string paths to access assets is error prone and lead to runtime errors instead of compile time.
 
-To that end I created a [build.rs](build.rs) as a test of away to scans the assets dir and generates enums for the assets it finds.  This way users can still drop in any assets they want and the code will update to reflect that(yes this prevents things like dynamic user generated content in realtime, but thats not a problem I have):
+To that end I created a [build.rs](build.rs) as a test of a way to scans the assets dir and generates enums for the assets it finds.  This way users can still drop in any assets they want and the code will update to reflect that(yes this prevents things like dynamic user generated content in realtime, but thats not a problem I have):
 
 It looks for: ```assets/make_human```, supports BEVY_ASSET_ROOT.
 
@@ -43,6 +45,7 @@ I will most likely remove most these and give instructions to download and zip b
 ## TODO
 
   - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
+  - [ ] Scroll Crash on mouse wheel, error: min > max, or either was NaN. min = 0.0, max = -4.0
   - [ ] Animations
     - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
     - [ ] Walk cycles

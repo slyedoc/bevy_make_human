@@ -134,6 +134,6 @@ impl AssetLoader for SkinningWeightsLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["weights.json"]
+        &["mhw", "weights.json"]
     }
 }

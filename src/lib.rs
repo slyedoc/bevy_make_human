@@ -4,8 +4,6 @@ pub mod components;
 pub mod debug_draw;
 pub mod loaders;
 pub mod skeleton;
-#[cfg(feature = "feathers")]
-pub mod ui;
 pub mod util;
 
 pub use crate::assets::MHThumb;
@@ -14,9 +12,6 @@ use crate::{assets::*, components::*, loaders::*, skeleton::*, util::*};
 pub mod prelude {
     #[cfg(feature = "debug_draw")]
     pub use crate::debug_draw::*;
-
-    #[cfg(feature = "feathers")]
-    pub use crate::ui::human_editor;
 
     #[allow(unused_imports)]
     pub use crate::{
@@ -62,8 +57,6 @@ impl Plugin for MakeHumanPlugin {
         app.add_plugins((
             #[cfg(feature = "debug_draw")]
             debug_draw::MakeHumanDebugPlugin,
-            #[cfg(feature = "feathers")]
-            ui::UiPlugin,
         ))
         .init_state::<MHState>()
         .add_loading_state(

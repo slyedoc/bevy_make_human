@@ -1,9 +1,7 @@
-use crate::{
-    assets::*,
-    ui::{clothing::ClothingMenu, morphs::MorphMenu, scroll::*, text_input::*},
-};
-use bevy::{
-    ecs::bundle::Bundle,
+use super::{clothing::ClothingMenu, morphs::MorphMenu, scroll::*, text_input::*};
+
+use bevy_make_human::assets::*;
+use bevy::{    
     feathers::{controls::*, rounded_corners::RoundedCorners, theme::*, tokens},
     picking::hover::Hovered,
     prelude::*,

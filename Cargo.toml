@@ -9,10 +9,9 @@ version = "0.1.1"
 edition = "2024"
 
 [features]
-default = ["glossy_eyes", "feathers", "debug_draw", "arkit"]
+default = ["glossy_eyes", "debug_draw", "arkit"]
 glossy_eyes = ["bevy/pbr_multi_layer_material_textures"]
 arkit = []
-feathers = ["bevy/experimental_bevy_feathers", "bevy_ui_text_input", "cosmic-text", "bevy_enhanced_input"]
 debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
@@ -44,39 +43,40 @@ thiserror = "1.0"
 # Optional debug_draw
 bevy_mod_billboard = { git = "https://github.com/kisya-games/bevy_mod_billboard.git", branch = "bevy-0.17", optional = true }
 
-# Optional ui
-bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "export-text-input-pipeline", optional = true }
-cosmic-text = { version = "0.14", optional = true }
-bevy_enhanced_input = { version = "0.19", optional = true }
-
 [[example]]
 name = "basic"
 required-features = []
 
 [[example]]
 name = "feathers"
-required-features = ["feathers", "debug_draw"]
+required-features = []
 
 [[example]]
 name = "arkit"
-required-features = ["feathers", "debug_draw", "arkit"]
+required-features = []
 
 [dev-dependencies]
 bevy = { version = "0.17", features = [
     "bevy_dev_tools", # fps overlay
     "bevy_ui_debug", # ui debug
     "wav", # audio support
+    "experimental_bevy_feathers",
 ] }
 avian3d = { version = "0.4", features = [
     "debug-plugin",
     "diagnostic_ui",
-] }
-bevy_enhanced_input = "0.19"
-bevy-inspector-egui = { version = "0.35" }
-bevy_egui = "0.38"
-bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", branch = "main" }
+] } 
 bevy_mod_skinned_aabb = "0.3"
-#rand = "0.9"
+bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", branch = "main" }
+
+bevy-inspector-egui = { version = "0.35" }
+bevy_enhanced_input = "0.19"
+bevy_egui = "0.38"
+
+# ui
+bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "export-text-input-pipeline" }
+cosmic-text = { version = "0.14" }
+
 
 [build-dependencies]
 serde_json = "1.0"

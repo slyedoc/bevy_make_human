@@ -27,7 +27,7 @@ pub struct HumanQuery {
     Rig,
     SkinMesh,
     SkinMaterial,
-    Hair,
+    // Hair, optional
     Eyes,
     Eyebrows,
     Eyelashes,

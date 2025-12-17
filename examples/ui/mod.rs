@@ -14,11 +14,7 @@ use bevy::{
     prelude::*,
     ui_widgets::observe,
 };
-
-use crate::{
-    assets::{Eyebrows, Eyelashes, Eyes, Hair, Rig, SkinMaterial, SkinMesh, Teeth, Tongue},
-    prelude::{ClothingOffset, FloorOffset, HumanQuery},
-};
+use bevy_make_human::prelude::*;
 
 use clothing::clothing_section;
 use collapsible::collapsible;

@@ -12,17 +12,13 @@ use bevy::{
 use bevy_ui_text_input::TextInputContents;
 use strum::IntoEnumIterator;
 
-use crate::{
-    MHThumb,
-    assets::Clothing,
-    prelude::{HumanDirty, Outfit},
-    ui::{
-        dropdown::{DropdownMenu, FilterOptions, matches_filter},
-        morphs::MorphMenu,
-        scroll::{ScrollProps, scroll},
-        text_input::{TextInputProps, text_input},
-    },
+use super::{
+    dropdown::{DropdownMenu, FilterOptions, matches_filter},
+    morphs::MorphMenu,
+    scroll::{ScrollProps, scroll},
+    text_input::{TextInputProps, text_input},
 };
+use bevy_make_human::prelude::*;
 
 #[derive(Component)]
 pub struct ClothingSection;

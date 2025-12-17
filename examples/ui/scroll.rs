@@ -68,6 +68,7 @@ impl ScrollProps {
     }
 
     /// Create a horizontally scrolling container with default styling
+    #[allow(dead_code)]
     pub fn horizontal(width: Val) -> Self {
         Self {
             width,
@@ -83,6 +84,7 @@ impl ScrollProps {
     }
 
     /// Create a bidirectionally scrolling container with default styling
+    #[allow(dead_code)]
     pub fn both(width: Val, height: Val) -> Self {
         Self {
             width,

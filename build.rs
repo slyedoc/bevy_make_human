@@ -210,7 +210,7 @@ fn generate_asset_enum(
     writeln!(f, "/// Generated from assets/make_human/{}", subdir)?;
     writeln!(
         f,
-        "#[derive({}Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]",
+        "#[derive({}Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect, Serialize, Deserialize)]",
         component_derive
     )?;
     writeln!(f, "pub enum {} {{", enum_name)?;
@@ -424,7 +424,7 @@ fn generate_eyes_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     )?;
     writeln!(
         f,
-        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum Eyes {{")?;
 
@@ -488,7 +488,7 @@ fn generate_pose_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "/// Generated from assets/make_human/poses")?;
     writeln!(
         f,
-        "#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+        "#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum PoseAsset {{")?;
 
@@ -550,7 +550,7 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
 
     writeln!(
         f,
-        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+        "#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum Rig {{")?;
 
@@ -839,7 +839,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
         writeln!(f, "/// Singles: 0.0 to 1.0 (one target)")?;
         writeln!(
             f,
-            "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect)]"
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, EnumProperty, Reflect, Serialize, Deserialize)]"
         )?;
         writeln!(f, "pub enum {} {{", enum_name)?;
 
@@ -929,7 +929,7 @@ fn generate_morph_enums(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     )?;
     writeln!(
         f,
-        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]"
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum MorphTarget {{")?;
 
@@ -1212,7 +1212,7 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "/// Ethnicity for expression targets")?;
     writeln!(
         f,
-        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect)]"
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, EnumIter, Display, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum Ethnicity {{")?;
     writeln!(f, "    #[default]")?;
@@ -1241,7 +1241,7 @@ fn generate_expression_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     )?;
     writeln!(
         f,
-        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, Reflect)]"
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Display, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum Expression {{")?;
 
@@ -1449,7 +1449,7 @@ fn generate_macro_morphs(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "/// Interpolated morphs: value 0-1 blends min->avg->max")?;
     writeln!(
         f,
-        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Reflect)]"
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumCount, Reflect, Serialize, Deserialize)]"
     )?;
     writeln!(f, "pub enum MacroMorph {{")?;
 

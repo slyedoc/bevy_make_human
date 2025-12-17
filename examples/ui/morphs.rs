@@ -1,11 +1,12 @@
-use crate::{
+use bevy_make_human::{
     assets::*,
     components::*,
     prelude::Morph,
-    ui::{
-        clothing::ClothingMenu,
-        dropdown::{DropdownMenu, FilterOptions, matches_filter},
-    },
+    
+};
+use super::{
+    clothing::ClothingMenu,
+    dropdown::{DropdownMenu, FilterOptions, matches_filter},
 };
 use bevy::{
     ecs::bundle::Bundle,

@@ -1,7 +1,11 @@
 //! Feathers UI example - demonstrates human_editor widget
 #[path = "common/mod.rs"]
 mod common;
-pub use common::*;
+use common::*;
+
+#[path = "ui/mod.rs"]
+mod ui;
+use ui::{*, text_input::handle_text_input_focus};
 
 use avian3d::prelude::*;
 use bevy::{
@@ -15,8 +19,7 @@ use bevy::{
     ui_widgets::*,
 };
 use bevy_make_human::{
-    prelude::*,
-    ui::{HumanEditor, human_editor, text_input::handle_text_input_focus},
+    prelude::*,    
 };
 use bevy_ui_text_input::TextInputPlugin;
 
@@ -30,7 +33,8 @@ fn main() -> AppExit {
             TextInputPlugin,   // required for text input fields in human editor
             // local
             MakeHumanPlugin::default(),
-            CommonPlugin,
+            CommonPlugin,            
+            UiPlugin, 
         ))
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, (setup, setup_ui))
