@@ -29,6 +29,8 @@ bevy_asset_loader = { git="https://github.com/slyedoc/bevy_asset_loader.git", br
     "standard_dynamic_assets",
     "progress_tracking"
 ] }
+bevy_blend_shapes = { git = "https://github.com/slyedoc/bevy_blend_shapes.git" }
+
 # fork updated for bevy 0.17
 iyes_progress = { git = "https://github.com/funatsufumiya/iyes_progress.git", branch = "feat/bevy_0.17" }
 

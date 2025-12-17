@@ -33,6 +33,8 @@ use bevy::{
 };
 use bevy_asset_loader::prelude::*;
 #[cfg(feature = "arkit")]
+use bevy_blend_shapes::ARKit;
+#[cfg(feature = "arkit")]
 use strum::IntoEnumIterator;
 
 #[derive(Default, States, Debug, Clone, Eq, PartialEq, Hash, Reflect)]
@@ -341,7 +343,7 @@ fn human_changed(
 
         #[cfg(feature = "arkit")]
         let arkit_targets: Vec<Handle<MorphTargetData>> = ARKit::iter()
-            .map(|shape| asset_server.load(shape.target_path()))
+            .map(|shape| asset_server.load(format!("make_human/targets/arkit/{}.target", shape)))
             .collect();
 
         commands
