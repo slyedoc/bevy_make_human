@@ -2,7 +2,6 @@ use bevy::{
     asset::{AssetLoader, LoadContext, io::Reader},
     platform::collections::HashMap,
     prelude::*,
-    tasks::ConditionalSendFuture,
 };
 use std::io::{BufRead, BufReader};
 use thiserror::Error;
@@ -14,7 +13,7 @@ pub struct MorphTargetData {
     pub offsets: HashMap<u32, Vec3>,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct MorphTargetLoader;
 
 #[derive(Debug, Error)]
@@ -30,73 +29,71 @@ impl AssetLoader for MorphTargetLoader {
     type Settings = ();
     type Error = MorphTargetLoaderError;
 
-    fn load(
+    async fn load(
         &self,
         reader: &mut dyn Reader,
         _settings: &Self::Settings,
         _load_context: &mut LoadContext<'_>,
-    ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
-        async move {
-            let mut bytes = Vec::new();
-            reader.read_to_end(&mut bytes).await?;
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
 
-            let mut offsets = HashMap::default();
-            let buf_reader = BufReader::new(bytes.as_slice());
+        let mut offsets = HashMap::default();
+        let buf_reader = BufReader::new(bytes.as_slice());
 
-            for (line_num, line) in buf_reader.lines().enumerate() {
-                let line = line?;
-                let line = line.trim();
+        for (line_num, line) in buf_reader.lines().enumerate() {
+            let line = line?;
+            let line = line.trim();
 
-                // Skip empty lines and comments
-                if line.is_empty() || line.starts_with('#') {
-                    continue;
-                }
-
-                let parts: Vec<&str> = line.split_whitespace().collect();
-
-                if parts.len() != 4 {
-                    return Err(MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Expected 4 values, got {}", parts.len()),
-                    });
-                }
-
-                let vertex_idx: u32 =
-                    parts[0]
-                        .parse()
-                        .map_err(|e| MorphTargetLoaderError::Parse {
-                            line: line_num + 1,
-                            msg: format!("Invalid vertex index: {}", e),
-                        })?;
-
-                let x: f32 = parts[1]
-                    .parse()
-                    .map_err(|e| MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Invalid x offset: {}", e),
-                    })?;
-
-                let y: f32 = parts[2]
-                    .parse()
-                    .map_err(|e| MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Invalid y offset: {}", e),
-                    })?;
-
-                let z: f32 = parts[3]
-                    .parse()
-                    .map_err(|e| MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Invalid z offset: {}", e),
-                    })?;
-
-                // Scale to meters (0.1x), negate X and Z to match base mesh
-                const SCALE: f32 = 0.1;
-                offsets.insert(vertex_idx, Vec3::new(x * -SCALE, y * SCALE, z * -SCALE));
+            // Skip empty lines and comments
+            if line.is_empty() || line.starts_with('#') {
+                continue;
             }
 
-            Ok(MorphTargetData { offsets })
+            let parts: Vec<&str> = line.split_whitespace().collect();
+
+            if parts.len() != 4 {
+                return Err(MorphTargetLoaderError::Parse {
+                    line: line_num + 1,
+                    msg: format!("Expected 4 values, got {}", parts.len()),
+                });
+            }
+
+            let vertex_idx: u32 =
+                parts[0]
+                    .parse()
+                    .map_err(|e| MorphTargetLoaderError::Parse {
+                        line: line_num + 1,
+                        msg: format!("Invalid vertex index: {}", e),
+                    })?;
+
+            let x: f32 = parts[1]
+                .parse()
+                .map_err(|e| MorphTargetLoaderError::Parse {
+                    line: line_num + 1,
+                    msg: format!("Invalid x offset: {}", e),
+                })?;
+
+            let y: f32 = parts[2]
+                .parse()
+                .map_err(|e| MorphTargetLoaderError::Parse {
+                    line: line_num + 1,
+                    msg: format!("Invalid y offset: {}", e),
+                })?;
+
+            let z: f32 = parts[3]
+                .parse()
+                .map_err(|e| MorphTargetLoaderError::Parse {
+                    line: line_num + 1,
+                    msg: format!("Invalid z offset: {}", e),
+                })?;
+
+            // Scale to meters (0.1x), negate X and Z to match base mesh
+            const SCALE: f32 = 0.1;
+            offsets.insert(vertex_idx, Vec3::new(x * -SCALE, y * SCALE, z * -SCALE));
         }
+
+        Ok(MorphTargetData { offsets })
     }
 
     fn extensions(&self) -> &[&str] {

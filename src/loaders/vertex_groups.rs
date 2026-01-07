@@ -39,7 +39,7 @@ impl VertexGroups {
 }
 
 /// Asset loader for vertex groups JSON files
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct VertexGroupsLoader;
 
 #[derive(Debug, Error)]

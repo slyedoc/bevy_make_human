@@ -39,6 +39,7 @@ impl Default for TextInputProps {
     }
 }
 
+// NOTE: BorderRadius removed due to 0.18.0-rc.2 bug (missing Component derive)
 pub fn text_input<B: Bundle>(props: TextInputProps, overrides: B) -> impl Bundle {
     use cosmic_text::Edit;
 
@@ -69,7 +70,6 @@ pub fn text_input<B: Bundle>(props: TextInputProps, overrides: B) -> impl Bundle
         TextInputStyle::default(),
         Hovered::default(),
         TabIndex(0),
-        props.corners.to_border_radius(4.0),
         ThemeBackgroundColor(tokens::BUTTON_BG),
         ThemeBorderColor(tokens::CHECKBOX_BORDER),
         ThemeFontColor(tokens::BUTTON_TEXT),

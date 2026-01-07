@@ -1,4 +1,4 @@
-use bevy::{animation::AnimationTarget, color::palettes::css, prelude::*};
+use bevy::{animation::AnimationTargetId, color::palettes::css, prelude::*};
 use bevy_mod_billboard::prelude::*;
 
 /// Gizmo config for skeleton bone visualization
@@ -108,7 +108,7 @@ impl Plugin for MakeHumanDebugPlugin {
 /// Draw skeleton bones as gizmos for debugging
 /// Reads from actual bone entity GlobalTransforms (animated)
 pub fn draw_skeleton_gizmos(
-    bones: Query<(&GlobalTransform, Option<&ChildOf>), With<AnimationTarget>>,
+    bones: Query<(&GlobalTransform, Option<&ChildOf>), With<AnimationTargetId>>,
     parent_transforms: Query<&GlobalTransform>,
     mut gizmos: Gizmos<SkeletonGizmos>,
     store: Res<GizmoConfigStore>,
@@ -146,7 +146,7 @@ pub fn draw_skeleton_gizmos(
 
 /// Draw local XYZ axes at each joint (RGB = XYZ convention)
 pub fn draw_joint_axes_gizmos(
-    joints: Query<&GlobalTransform, With<AnimationTarget>>,
+    joints: Query<&GlobalTransform, With<AnimationTargetId>>,
     mut gizmos: Gizmos<JointAxesGizmos>,
     store: Res<GizmoConfigStore>,
 ) {
@@ -181,9 +181,9 @@ fn manage_joint_labels(
     store: Res<GizmoConfigStore>,
     unlabeled_joints: Query<
         (Entity, Option<&Name>, &GlobalTransform),
-        (With<AnimationTarget>, Without<HasJointLabel>),
+        (With<AnimationTargetId>, Without<HasJointLabel>),
     >,
-    labeled_joints: Query<Entity, (With<AnimationTarget>, With<HasJointLabel>)>,
+    labeled_joints: Query<Entity, (With<AnimationTargetId>, With<HasJointLabel>)>,
     labels: Query<Entity, With<JointNameLabel>>,
     mut label_transforms: Query<&mut Transform, With<JointNameLabel>>,
 ) {

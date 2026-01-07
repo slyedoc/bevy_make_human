@@ -155,7 +155,7 @@ fn morph_item_row(_human_entity: Entity, idx: usize, morph: &Morph) -> impl Bund
                             min,
                             max
                         },
-                        ()
+                        (SliderStep(0.01), SliderPrecision(2))
                     ),
                     observe(on_morph_slider_change)
                 )]

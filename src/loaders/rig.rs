@@ -188,7 +188,7 @@ impl RigBones {
 }
 
 /// Asset loader for rig JSON files
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct RigLoader;
 
 #[derive(Debug, Error)]

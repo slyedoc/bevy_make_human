@@ -50,7 +50,7 @@ pub struct MhcloAsset {
     pub z_depth: u32,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct MhcloLoader;
 
 #[derive(Debug, Error)]

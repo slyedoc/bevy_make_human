@@ -4,7 +4,7 @@ use bevy::{
         theme::ThemedText,
     },
     prelude::*,
-    ui_widgets::{SliderValue, ValueChange, observe},
+    ui_widgets::{SliderPrecision, SliderStep, SliderValue, ValueChange, observe},
 };
 
 pub fn offset_slider<T: Component + Default + From<f32>>(
@@ -30,8 +30,12 @@ pub fn offset_slider<T: Component + Default + From<f32>>(
                 },
                 ThemedText
             ),
+            // Slider with small step for fine control
             (
-                slider(SliderProps { value, min, max }, ()),
+                slider(
+                    SliderProps { value, min, max },
+                    (SliderStep(0.001), SliderPrecision(3)),
+                ),
                 observe(on_offset_change::<T>(human_entity)),
             ),
         ],

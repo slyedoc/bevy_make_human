@@ -22,7 +22,7 @@ use bevy::{
 use std::io::{BufRead, BufReader};
 use thiserror::Error;
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct MhmatLoader;
 
 #[derive(Debug, Error)]
@@ -244,13 +244,13 @@ impl AssetLoader for MhmatLoader {
 }
 
 fn load_texture(load_context: &mut LoadContext, filename: &str) -> Handle<Image> {
-    let parent = load_context.asset_path().parent().unwrap();
+    let parent = load_context.path().parent().unwrap();
     let full_path = format!("{}/{}", parent.path().display(), filename);
     load_context.load(full_path)
 }
 
 fn load_texture_linear(load_context: &mut LoadContext, filename: &str) -> Handle<Image> {
-    let parent = load_context.asset_path().parent().unwrap();
+    let parent = load_context.path().parent().unwrap();
     let full_path = format!("{}/{}", parent.path().display(), filename);
     load_context
         .loader()

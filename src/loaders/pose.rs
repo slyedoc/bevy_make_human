@@ -43,7 +43,7 @@ struct BvhJoint {
     channels: Vec<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct BvhPoseLoader;
 
 #[derive(Debug, Error)]

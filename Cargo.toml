@@ -16,23 +16,24 @@ debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
 [dependencies]
-bevy = { version = "0.17", features = [
+bevy = { version = "0.18.0-rc", features = [
     "png", # png texture support
     "jpeg", # jpg texture support
 ] }
-avian3d = "0.4"
-bevy-inspector-egui = { version = "0.35" }
+avian3d = { git = "https://github.com/avianphysics/avian", branch = "bevy-0.18" } #rc
+
+bevy-inspector-egui = { git = "https://github.com/luggage66/bevy-inspector-egui", branch = "bevy-0.18" } #rc
 
 # official release does not have progress tracking due to iyes_progress not official updated yet to 0.17
-bevy_asset_loader = { git="https://github.com/slyedoc/bevy_asset_loader.git", branch= "with_progress", features = [
+bevy_asset_loader = { git = "https://github.com/NiklasEi/bevy_asset_loader", branch= "bevy_main", features = [
     "2d",
     "standard_dynamic_assets",
-    "progress_tracking"
-] }
+    # "progress_tracking"
+] } 
 bevy_blend_shapes = { git = "https://github.com/slyedoc/bevy_blend_shapes.git" }
 
 # fork updated for bevy 0.17
-iyes_progress = { git = "https://github.com/funatsufumiya/iyes_progress.git", branch = "feat/bevy_0.17" }
+#iyes_progress = { git = "https://github.com/funatsufumiya/iyes_progress.git", branch = "feat/bevy_0.17" }
 
 obj = "0.10.2"
 
@@ -43,7 +44,7 @@ strum = { version = "0.27", features = ["derive"] }
 thiserror = "1.0"
 
 # Optional debug_draw
-bevy_mod_billboard = { git = "https://github.com/kisya-games/bevy_mod_billboard.git", branch = "bevy-0.17", optional = true }
+bevy_mod_billboard = { git = "https://github.com/slyedoc/bevy_mod_billboard.git", branch = "bevy-0.18", optional = true }
 
 [[example]]
 name = "basic"
@@ -58,26 +59,25 @@ name = "arkit"
 required-features = []
 
 [dev-dependencies]
-bevy = { version = "0.17", features = [
+bevy = { version = "0.18.0-rc", features = [
     "bevy_dev_tools", # fps overlay
     "bevy_ui_debug", # ui debug
     "wav", # audio support
     "experimental_bevy_feathers",
 ] }
-avian3d = { version = "0.4", features = [
+avian3d = { git = "https://github.com/avianphysics/avian", branch = "bevy-0.18", features = [
     "debug-plugin",
     "diagnostic_ui",
-] } 
-bevy_mod_skinned_aabb = "0.3"
-bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", branch = "main" }
-
-bevy-inspector-egui = { version = "0.35" }
-bevy_enhanced_input = "0.19"
-bevy_egui = "0.38"
+] }
+bevy_mod_skinned_aabb = { git = "https://github.com/greeble-dev/bevy_mod_skinned_aabb", branch = "bevy-0.18" } 
+bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", branch = "bevy18" }
+bevy-inspector-egui = { git = "https://github.com/luggage66/bevy-inspector-egui", branch = "bevy-0.18" }
+bevy_enhanced_input = { git = "https://github.com/simgine/bevy_enhanced_input", branch = "bevy-0.18"}
+bevy_egui = { git = "https://github.com/ptsd/bevy_egui", branch = "bevy-0.18" }
 
 # ui
-bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "export-text-input-pipeline" }
-cosmic-text = { version = "0.14" }
+bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "bevy-0.18" }
+cosmic-text = { version = "0.16" }
 
 
 [build-dependencies]

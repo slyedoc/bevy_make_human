@@ -87,7 +87,7 @@ impl SkinningWeights {
 }
 
 /// Asset loader for weight JSON files
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct SkinningWeightsLoader;
 
 #[derive(Debug, Error)]

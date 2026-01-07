@@ -30,8 +30,7 @@ pub struct ProxyAsset {
     pub y_scale: Option<(u32, u32, f32)>,
     pub z_scale: Option<(u32, u32, f32)>,
 }
-
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct ProxyLoader;
 
 #[derive(Debug, Error)]

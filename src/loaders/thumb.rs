@@ -7,7 +7,7 @@ use bevy::{
 };
 use thiserror::Error;
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct ThumbLoader;
 
 #[derive(Debug, Error)]

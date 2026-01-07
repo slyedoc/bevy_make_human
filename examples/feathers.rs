@@ -153,35 +153,31 @@ struct EditorPanels;
 
 fn setup_ui(mut commands: Commands) {
     // Controls panel
-    commands.spawn((
-        Name::new("ControlsPanel"),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: px(20.0),
-            left: px(20.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(8.0),
-            padding: UiRect::all(px(12.0)),
-            ..default()
-        },
-        ThemeBackgroundColor(tokens::WINDOW_BG),
-        BorderRadius::all(px(8.0)),
-        children![
-            (
-                Text::new("Controls"),
-                ThemedText,
-                TextFont::from_font_size(14.0)
-            ),
-            (
-                button(
+    // TODO: Add BorderRadius back when 0.18.0 is released (missing Component derive in RC)
+    commands
+        .spawn((
+            Name::new("ControlsPanel"),
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: px(20.0),
+                left: px(20.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(8.0),
+                padding: UiRect::all(px(12.0)),
+                ..default()
+            },
+            ThemeBackgroundColor(tokens::WINDOW_BG),
+        ))
+        .with_children(|parent| {
+            parent.spawn((Text::new("Controls"), ThemedText, TextFont::from_font_size(14.0)));
+            parent
+                .spawn(button(
                     ButtonProps::default(),
                     (),
-                    Spawn((Text::new("Add Human"), ThemedText))
-                ),
-                observe(spawn_new_character),
-            ),
-        ],
-    ));
+                    Spawn((Text::new("Add Human"), ThemedText)),
+                ))
+                .observe(spawn_new_character);
+        });
 
     // Container for editor panels (on the left side)
     commands.spawn((
@@ -233,41 +229,45 @@ fn on_human_click(
     }
 
     // Spawn wrapper panel with close button and human_editor as child
-    commands.entity(*panels_container).with_child((
-        EditorPanel,
-        Node {
-            width: px(380.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-        ThemeBackgroundColor(tokens::WINDOW_BG),
-        BorderRadius::all(px(8.0)),
-        children![
+    // TODO: Add BorderRadius back when 0.18.0 is released (missing Component derive in RC)
+    let panel = commands
+        .spawn((
+            EditorPanel,
+            Node {
+                width: px(380.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            ThemeBackgroundColor(tokens::WINDOW_BG),
+        ))
+        .with_children(|parent| {
             // Close button wrapper
-            (
-                Node {
+            parent
+                .spawn(Node {
                     align_self: AlignSelf::FlexEnd,
                     margin: UiRect::new(px(0.0), px(4.0), px(4.0), px(0.0)),
                     ..default()
-                },
-                children![(
-                    button(
-                        ButtonProps::default(),
-                        (),
-                        Spawn((Text::new("x"), ThemedText))
-                    ),
-                    observe(close_editor_panel),
-                )],
-            ),
+                })
+                .with_children(|close_parent| {
+                    close_parent
+                        .spawn(button(
+                            ButtonProps::default(),
+                            (),
+                            Spawn((Text::new("x"), ThemedText)),
+                        ))
+                        .observe(close_editor_panel);
+                });
             // Human editor
-            human_editor(human, ())
-        ],
-    ));
+            parent.spawn(human_editor(human, ()));
+        })
+        .id();
+    commands.entity(*panels_container).add_child(panel);
 }
 
 #[derive(Component)]
 struct EditorPanel;
+
 
 fn close_editor_panel(
     trigger: On<Pointer<Click>>,

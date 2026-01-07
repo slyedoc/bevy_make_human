@@ -21,12 +21,13 @@ pub mod prelude {
 }
 
 use avian3d::prelude::*;
+use bevy::animation::AnimatedBy;
 #[cfg(feature = "arkit")]
 use bevy::asset::RenderAssetUsages;
 #[cfg(feature = "arkit")]
 use bevy::mesh::morph::{MeshMorphWeights, MorphAttributes, MorphTargetImage};
 use bevy::{
-    animation::{AnimationTarget, AnimationTargetId},
+    animation::{AnimationTargetId},
     mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task, futures_lite::future},
@@ -211,6 +212,7 @@ fn poll_basemesh_task(
     }
 }
 
+// TODO: yea changed check is slow, replace with observers on change maybe?
 /// mark Human as dirty when relevant components change
 fn dirty_check(
     mut commands: Commands,
@@ -619,10 +621,12 @@ fn update_human(
                         Name::new(bone.name.clone()),
                         skeleton.bind_pose[bone_idx],
                         GlobalTransform::default(),
-                        AnimationTarget {
-                            id: AnimationTargetId::from_names(path.iter().rev()),
-                            player: entity,
-                        },
+                        // AnimationTarget {
+                        //     id: AnimationTargetId::from_names(path.iter().rev()),
+                        //     player: entity,
+                        // },
+                        AnimationTargetId::from_names(path.iter().rev()),
+                        AnimatedBy(entity),
                         Visibility::default(),
                     ))
                     .id();

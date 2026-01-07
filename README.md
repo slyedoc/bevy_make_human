@@ -44,7 +44,7 @@ I will most likely remove most these and give instructions to download and zip b
 
 ## TODO
 
-  - [ ] checout bevy_animation once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
+  - [ ] try bevy_animation_graph once [PR 112](https://github.com/mbrea-c/bevy_animation_graph/pull/112) lands
   - [ ] Scroll Crash on mouse wheel, error: min > max, or either was NaN. min = 0.0, max = -4.0
   - [ ] Animations
     - [ ] Aabb, see [skinned mesh Aabb PR](https://github.com/bevyengine/bevy/pull/21837)
