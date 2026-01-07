@@ -77,7 +77,7 @@ bevy_egui = { git = "https://github.com/ptsd/bevy_egui", branch = "bevy-0.18" }
 
 # ui
 bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "bevy-0.18" }
-cosmic-text = { version = "0.16" }
+cosmic-text = { version = "0.15" }
 
 
 [build-dependencies]
