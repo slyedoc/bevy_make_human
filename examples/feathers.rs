@@ -5,7 +5,7 @@ use common::*;
 
 #[path = "ui/mod.rs"]
 mod ui;
-use ui::{*, text_input::handle_text_input_focus};
+use ui::{text_input::handle_text_input_focus, *};
 
 use avian3d::prelude::*;
 use bevy::{
@@ -16,11 +16,8 @@ use bevy::{
     picking::mesh_picking::MeshPickingPlugin,
     prelude::*,
     render::view::Hdr,
-    ui_widgets::*,
 };
-use bevy_make_human::{
-    prelude::*,    
-};
+use bevy_make_human::prelude::*;
 use bevy_ui_text_input::TextInputPlugin;
 
 fn main() -> AppExit {
@@ -33,8 +30,8 @@ fn main() -> AppExit {
             TextInputPlugin,   // required for text input fields in human editor
             // local
             MakeHumanPlugin::default(),
-            CommonPlugin,            
-            UiPlugin, 
+            CommonPlugin,
+            UiPlugin,
         ))
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, (setup, setup_ui))
@@ -169,7 +166,11 @@ fn setup_ui(mut commands: Commands) {
             ThemeBackgroundColor(tokens::WINDOW_BG),
         ))
         .with_children(|parent| {
-            parent.spawn((Text::new("Controls"), ThemedText, TextFont::from_font_size(14.0)));
+            parent.spawn((
+                Text::new("Controls"),
+                ThemedText,
+                TextFont::from_font_size(14.0),
+            ));
             parent
                 .spawn(button(
                     ButtonProps::default(),
@@ -267,7 +268,6 @@ fn on_human_click(
 
 #[derive(Component)]
 struct EditorPanel;
-
 
 fn close_editor_panel(
     trigger: On<Pointer<Click>>,

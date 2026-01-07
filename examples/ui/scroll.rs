@@ -1,11 +1,6 @@
 use bevy::{
-    ecs::{
-        bundle::Bundle,
-        observer::On,
-        system::Query,
-    },
+    ecs::{bundle::Bundle, observer::On, system::Query},
     feathers::{rounded_corners::RoundedCorners, theme::ThemeBackgroundColor, tokens},
-    math::Vec2,
     picking::events::{Pointer, Scroll as ScrollEvent},
     ui::{
         AlignItems, ComputedNode, JustifyContent, Node, Overflow, OverflowAxis, PositionType,
@@ -27,8 +22,6 @@ pub struct ScrollProps {
     pub overflow: Overflow,
     /// Flex direction for content layout
     pub flex_direction: bevy::ui::FlexDirection,
-    /// Rounded corners options
-    pub corners: RoundedCorners,
     /// Align items (horizontal alignment for column layouts, vertical for row layouts)
     pub align_items: AlignItems,
 }

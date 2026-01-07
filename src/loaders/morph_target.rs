@@ -59,13 +59,12 @@ impl AssetLoader for MorphTargetLoader {
                 });
             }
 
-            let vertex_idx: u32 =
-                parts[0]
-                    .parse()
-                    .map_err(|e| MorphTargetLoaderError::Parse {
-                        line: line_num + 1,
-                        msg: format!("Invalid vertex index: {}", e),
-                    })?;
+            let vertex_idx: u32 = parts[0]
+                .parse()
+                .map_err(|e| MorphTargetLoaderError::Parse {
+                    line: line_num + 1,
+                    msg: format!("Invalid vertex index: {}", e),
+                })?;
 
             let x: f32 = parts[1]
                 .parse()

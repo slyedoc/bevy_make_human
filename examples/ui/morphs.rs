@@ -1,9 +1,3 @@
-use bevy_make_human::{
-    assets::*,
-    components::*,
-    prelude::Morph,
-    
-};
 use super::{
     clothing::ClothingMenu,
     dropdown::{DropdownMenu, FilterOptions, matches_filter},
@@ -15,6 +9,7 @@ use bevy::{
     prelude::*,
     ui_widgets::*,
 };
+use bevy_make_human::{assets::*, components::*, prelude::Morph};
 use bevy_ui_text_input::TextInputContents;
 
 use super::{scroll::*, text_input::*};

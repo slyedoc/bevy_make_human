@@ -27,7 +27,7 @@ use bevy::asset::RenderAssetUsages;
 #[cfg(feature = "arkit")]
 use bevy::mesh::morph::{MeshMorphWeights, MorphAttributes, MorphTargetImage};
 use bevy::{
-    animation::{AnimationTargetId},
+    animation::AnimationTargetId,
     mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task, futures_lite::future},

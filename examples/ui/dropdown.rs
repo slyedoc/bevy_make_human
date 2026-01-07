@@ -1,12 +1,12 @@
 use super::{clothing::ClothingMenu, morphs::MorphMenu, scroll::*, text_input::*};
 
-use bevy_make_human::assets::*;
-use bevy::{    
+use bevy::{
     feathers::{controls::*, rounded_corners::RoundedCorners, theme::*, tokens},
     picking::hover::Hovered,
     prelude::*,
     ui_widgets::*,
 };
+use bevy_make_human::assets::*;
 use bevy_ui_text_input::TextInputContents;
 use strum::IntoEnumIterator;
 
