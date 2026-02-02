@@ -351,7 +351,7 @@ fn human_changed(
         commands
             .entity(h.entity)
             .remove::<HumanDirty>()
-            // TODO: cancel existing task?
+            // TODO: test that drop does cancel existing task
             .remove::<HumanProcessingTask>() // stop current builds,
             .insert(HumanAssets {
                 skin_obj_base: asset_server.load(h.skin_mesh.obj().to_string()),
@@ -462,9 +462,10 @@ fn process_human(input: HumanProcessingInput) -> HumanProcessingOutput {
     }
 
     // Build skeleton
-    let skeleton = input
-        .rig_bones
-        .build_skeleton(&morphed_vertices, &input.base_vertex_groups);
+    let skeleton = 
+        input
+            .rig_bones
+            .build_skeleton(&morphed_vertices, &input.base_vertex_groups);
 
     let mut parts = input
         .parts

@@ -8,9 +8,14 @@ mod common;
 use common::*;
 
 use avian3d::prelude::*;
-use bevy::{animation::AnimationTargetId, gltf::Gltf, platform::collections::HashMap, prelude::*};
+use bevy::{
+    animation::AnimationTargetId,
+    gltf::Gltf,
+    platform::collections::HashMap,
+    prelude::*,
+};
 use bevy_make_human::prelude::*;
-use std::any::TypeId;
+use std::{any::TypeId, f32::consts::FRAC_PI_2};
 
 fn main() -> AppExit {
     App::new()
@@ -93,9 +98,9 @@ fn setup_animation_graph(
     let mut graph = AnimationGraph::new();
     let mut first_node = None;
 
-    // Transform::scale is field index 2 - skip scale curves from Mixamo (0.01 cm->m scaling)
+    // Transform field indices: translation=0, rotation=1, scale=2
     let transform_type_id = TypeId::of::<Transform>();
-    const SCALE_FIELD_INDEX: usize = 2;
+    const ROTATION_FIELD_INDEX: usize = 1;
 
     // Build reverse lookup: target_id -> node name
     let mut id_to_name: HashMap<AnimationTargetId, String> = HashMap::default();
@@ -109,36 +114,38 @@ fn setup_animation_graph(
             continue;
         };
 
-        // Create retargeted clip - copy translation/rotation curves, skip scale
-        // Also skip Armature rotation (Mixamo uses Z-up, causes character to lay on back)
+        // Create retargeted clip - ONLY copy rotation curves
+        // Skip translation (Mixamo cm vs our meters, skeleton has correct positions)
+        // Skip scale (Mixamo 0.01 factor)
+        // Skip Armature entirely (Z-up mismatch)
         let mut new_clip = AnimationClip::default();
         let mut curves_copied = 0;
 
         for (source_id, curves) in source_clip.curves().iter() {
             if let Some(&target_id) = id_map.get(source_id) {
-                // Check if this is the Armature node
+                // Skip Armature node entirely
                 let is_armature = id_to_name
                     .get(source_id)
                     .map(|n| n == "Armature")
                     .unwrap_or(false);
+                if is_armature {
+                    continue;
+                }
 
                 for curve in curves.iter() {
-                    // Skip scale curves (Mixamo uses cm, we use meters)
-                    let is_scale = match curve.0.evaluator_id() {
+                    // Only copy rotation curves
+                    let is_rotation = match curve.0.evaluator_id() {
                         EvaluatorId::ComponentField(hashed) => {
                             let (type_id, field_idx) = **hashed;
-                            type_id == transform_type_id && field_idx == SCALE_FIELD_INDEX
+                            type_id == transform_type_id && field_idx == ROTATION_FIELD_INDEX
                         }
                         _ => false,
                     };
 
-                    // Skip all Armature transforms (coordinate system mismatch)
-                    if is_scale || is_armature {
-                        continue;
+                    if is_rotation {
+                        new_clip.add_variable_curve_to_target(target_id, curve.clone());
+                        curves_copied += 1;
                     }
-
-                    new_clip.add_variable_curve_to_target(target_id, curve.clone());
-                    curves_copied += 1;
                 }
             }
         }
@@ -188,6 +195,7 @@ fn setup(
     ));
 
     // Spawn human with Mixamo rig (matches our animation skeleton)
+    // Rotate -90° on X to convert from Mixamo Z-up to our Y-up
     commands
         .spawn((
             Name::new("AnimatedHuman"),
@@ -208,7 +216,7 @@ fn setup(
                 MorphTarget::Macro(MacroMorph::CaucasianMaleYoung),
                 1.0,
             )]),
-            Transform::from_xyz(0.0, 0.0, 0.0),
+            Transform::from_rotation(Quat::from_rotation_x(-FRAC_PI_2)),
         ))
         .observe(on_human_complete);
 }

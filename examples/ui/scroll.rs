@@ -1,6 +1,6 @@
 use bevy::{
     ecs::{bundle::Bundle, observer::On, system::Query},
-    feathers::{rounded_corners::RoundedCorners, theme::ThemeBackgroundColor, tokens},
+    feathers::{theme::ThemeBackgroundColor, tokens},
     picking::events::{Pointer, Scroll as ScrollEvent},
     ui::{
         AlignItems, ComputedNode, JustifyContent, Node, Overflow, OverflowAxis, PositionType,
@@ -33,7 +33,6 @@ impl Default for ScrollProps {
             height: Val::Auto,
             overflow: Overflow::hidden(),
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }
@@ -50,7 +49,6 @@ impl ScrollProps {
                 y: OverflowAxis::Scroll,
             },
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }
@@ -66,7 +64,6 @@ impl ScrollProps {
                 y: OverflowAxis::Hidden,
             },
             flex_direction: bevy::ui::FlexDirection::Row,
-            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }
@@ -82,7 +79,6 @@ impl ScrollProps {
                 y: OverflowAxis::Scroll,
             },
             flex_direction: bevy::ui::FlexDirection::Column,
-            corners: RoundedCorners::default(),
             align_items: AlignItems::Stretch,
         }
     }

@@ -16,7 +16,7 @@ debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
 raytrace = ["bevy/bevy_solari"]
 
 [dependencies]
-bevy = { version = "0.18.0-rc", features = [
+bevy = { version = "0.18", features = [
     "png", # png texture support
     "jpeg", # jpg texture support
 ] }
@@ -62,8 +62,12 @@ required-features = []
 name = "animation"
 required-features = []
 
+[[example]]
+name = "animation2"
+required-features = []
+
 [dev-dependencies]
-bevy = { version = "0.18.0-rc", features = [
+bevy = { version = "0.18", features = [
     "bevy_dev_tools", # fps overlay
     "bevy_ui_debug", # ui debug
     "wav", # audio support
@@ -81,7 +85,7 @@ bevy_egui = { git = "https://github.com/ptsd/bevy_egui", branch = "bevy-0.18" }
 
 # ui
 bevy_ui_text_input = { git = "https://github.com/slyedoc/bevy_ui_text_input", branch = "bevy-0.18" }
-cosmic-text = { version = "0.15" }
+cosmic-text = { version = "0.16" }
 
 
 [build-dependencies]

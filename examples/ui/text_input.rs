@@ -1,7 +1,6 @@
 use bevy::ecs::bundle::Bundle;
 use bevy::feathers::{
     constants::size,
-    rounded_corners::RoundedCorners,
     theme::{ThemeBackgroundColor, ThemeBorderColor, ThemeFontColor},
     tokens,
 };
@@ -20,7 +19,6 @@ pub struct TextInputProps {
     pub height: Val,
     pub placeholder: String,
     pub initial_text: String,
-    pub corners: RoundedCorners,
     pub mode: TextInputMode,
     pub max_chars: Option<usize>,
 }
@@ -32,7 +30,6 @@ impl Default for TextInputProps {
             height: size::ROW_HEIGHT,
             placeholder: String::new(),
             initial_text: String::new(),
-            corners: RoundedCorners::All,
             mode: TextInputMode::SingleLine,
             max_chars: None,
         }

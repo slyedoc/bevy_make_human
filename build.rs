@@ -586,6 +586,15 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
             dir_name_str, dir_name_str
         ));
 
+        // Check for optional rotations file
+        let rotations_path = asset_dir.join(format!("{}_rotations.json", dir_name_str));
+        if rotations_path.exists() {
+            props.push(format!(
+                "rotations = \"make_human/rigs/{}/{}_rotations.json\"",
+                dir_name_str, dir_name_str
+            ));
+        }
+
         writeln!(f, "    /// {}", dir_name_str)?;
         writeln!(f, "    #[strum(props({}))]", props.join(", "))?;
         writeln!(f, "    {},", variant_name)?;
@@ -606,6 +615,10 @@ fn generate_rig_enum(f: &mut File, assets_dir: &Path) -> io::Result<()> {
     writeln!(f, "        self.get_str(\"weights\").unwrap()")?;
     writeln!(f, "    }}")?;
     writeln!(f)?;
+
+    writeln!(f, "    pub fn rotations(&self) -> Option<&'static str> {{")?;
+    writeln!(f, "        self.get_str(\"rotations\")")?;
+    writeln!(f, "    }}")?;
 
     writeln!(f)?;
     writeln!(f, "}}")?;
