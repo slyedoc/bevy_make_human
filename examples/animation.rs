@@ -97,19 +97,33 @@ fn setup_animation_graph(
     let transform_type_id = TypeId::of::<Transform>();
     const SCALE_FIELD_INDEX: usize = 2;
 
+    // Build reverse lookup: target_id -> node name
+    let mut id_to_name: HashMap<AnimationTargetId, String> = HashMap::default();
+    for (name, path) in &gltf_paths {
+        let id = AnimationTargetId::from_names(path.iter());
+        id_to_name.insert(id, name.clone());
+    }
+
     for clip_handle in &gltf.animations {
         let Some(source_clip) = animation_clips.get(clip_handle) else {
             continue;
         };
 
         // Create retargeted clip - copy translation/rotation curves, skip scale
+        // Also skip Armature rotation (Mixamo uses Z-up, causes character to lay on back)
         let mut new_clip = AnimationClip::default();
         let mut curves_copied = 0;
 
         for (source_id, curves) in source_clip.curves().iter() {
             if let Some(&target_id) = id_map.get(source_id) {
+                // Check if this is the Armature node
+                let is_armature = id_to_name
+                    .get(source_id)
+                    .map(|n| n == "Armature")
+                    .unwrap_or(false);
+
                 for curve in curves.iter() {
-                    // Skip scale curves
+                    // Skip scale curves (Mixamo uses cm, we use meters)
                     let is_scale = match curve.0.evaluator_id() {
                         EvaluatorId::ComponentField(hashed) => {
                             let (type_id, field_idx) = **hashed;
@@ -118,10 +132,13 @@ fn setup_animation_graph(
                         _ => false,
                     };
 
-                    if !is_scale {
-                        new_clip.add_variable_curve_to_target(target_id, curve.clone());
-                        curves_copied += 1;
+                    // Skip all Armature transforms (coordinate system mismatch)
+                    if is_scale || is_armature {
+                        continue;
                     }
+
+                    new_clip.add_variable_curve_to_target(target_id, curve.clone());
+                    curves_copied += 1;
                 }
             }
         }
