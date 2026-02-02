@@ -58,6 +58,10 @@ required-features = []
 name = "arkit"
 required-features = []
 
+[[example]]
+name = "animation"
+required-features = []
+
 [dev-dependencies]
 bevy = { version = "0.18.0-rc", features = [
     "bevy_dev_tools", # fps overlay

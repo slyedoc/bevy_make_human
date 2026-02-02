@@ -590,10 +590,7 @@ fn update_human(
             arkit_morphs,
         }) = future::block_on(future::poll_once(&mut task.0))
         {
-            commands
-                .entity(entity)
-                .remove::<HumanProcessingTask>() // cleanup task
-                .insert(AnimationPlayer::default());
+            commands.entity(entity).remove::<HumanProcessingTask>();
 
             // remove all children
             if let Some(children) = children_maybe {
@@ -602,12 +599,30 @@ fn update_human(
                 }
             }
 
+            // Spawn Armature entity as root - matches GLTF skeleton structure for animation compatibility
+            let armature_name = Name::new("Armature");
+            let armature_target_id = AnimationTargetId::from_names([armature_name.clone()].iter());
+            let armature_entity = commands
+                .spawn((
+                    armature_name.clone(),
+                    Transform::IDENTITY,
+                    GlobalTransform::default(),
+                    armature_target_id,
+                    AnimatedBy(entity),
+                    AnimationPlayer::default(),
+                    Armature,
+                    Visibility::default(),
+                ))
+                .id();
+
+            commands.entity(entity).add_children(&[armature_entity]);
+
             let mut bone_entities = Vec::with_capacity(skeleton.bones.len());
 
             // Spawn all bones
             for (bone_idx, bone) in skeleton.bones.iter().enumerate() {
                 // Build hierarchical name path for AnimationTarget
-                // Path: bone -> ... -> root
+                // Path includes Armature root for GLTF animation compatibility
                 let mut path = vec![Name::new(bone.name.clone())];
                 let mut current_idx = bone_idx;
 
@@ -615,18 +630,16 @@ fn update_human(
                     path.push(Name::new(skeleton.bones[parent_idx].name.clone()));
                     current_idx = parent_idx;
                 }
+                // Add Armature as root of path
+                path.push(armature_name.clone());
 
                 let bone_entity = commands
                     .spawn((
                         Name::new(bone.name.clone()),
                         skeleton.bind_pose[bone_idx],
                         GlobalTransform::default(),
-                        // AnimationTarget {
-                        //     id: AnimationTargetId::from_names(path.iter().rev()),
-                        //     player: entity,
-                        // },
                         AnimationTargetId::from_names(path.iter().rev()),
-                        AnimatedBy(entity),
+                        AnimatedBy(armature_entity),
                         Visibility::default(),
                     ))
                     .id();
@@ -641,8 +654,8 @@ fn update_human(
                         .entity(bone_entities[parent_idx])
                         .add_children(&[bone]);
                 } else {
-                    // Root bones attach to parent entity
-                    commands.entity(entity).add_children(&[bone]);
+                    // Root bones attach to Armature entity
+                    commands.entity(armature_entity).add_children(&[bone]);
                 }
             }
 
