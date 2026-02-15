@@ -4,7 +4,7 @@ use super::{
 };
 use bevy::{
     ecs::bundle::Bundle,
-    feathers::{controls::*, rounded_corners::RoundedCorners, theme::*, tokens},
+    feathers::{controls::*, theme::*, tokens},
     picking::hover::Hovered,
     prelude::*,
     ui_widgets::*,
@@ -77,7 +77,7 @@ pub fn morphs_section(human_entity: Entity, morphs: &Morphs) -> impl Bundle {
             (
                 Text::new("Morphs"),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText
@@ -128,7 +128,7 @@ fn morph_item_row(_human_entity: Entity, idx: usize, morph: &Morph) -> impl Bund
             (
                 Text::new(label),
                 TextFont {
-                    font_size: 10.0,
+                    font_size: FontSize::Px(10.0),
                     ..default()
                 },
                 ThemedText,
@@ -417,7 +417,7 @@ fn on_open_morph_menu(
                                 Text::new(label),
                                 ThemedText,
                                 TextFont {
-                                    font_size: 10.0,
+                                    font_size: FontSize::Px(10.0),
                                     ..default()
                                 }
                             ))
@@ -453,7 +453,6 @@ fn on_open_morph_menu(
                                     width: Val::Percent(100.0),
                                     height: Val::Px(24.0),
                                     placeholder: "Filter...".to_string(),
-                                    corners: RoundedCorners::Top,
                                     ..default()
                                 },
                                 TextInputContents::default()

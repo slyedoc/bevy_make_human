@@ -1,7 +1,6 @@
 use bevy::{
     feathers::{
         controls::{ButtonProps, button},
-        rounded_corners::RoundedCorners,
         theme::{ThemeBackgroundColor, ThemedText},
         tokens,
     },
@@ -76,7 +75,7 @@ pub fn clothing_section(human_entity: Entity, outfit: &Outfit) -> impl Bundle {
             (
                 Text::new("Clothing"),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText
@@ -124,7 +123,7 @@ fn clothing_item_row(_human_entity: Entity, idx: usize, item: Clothing) -> impl 
             (
                 Text::new(item.to_string()),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText,
@@ -393,7 +392,6 @@ fn on_open_clothing_menu(
                                     width: Val::Percent(100.0),
                                     height: Val::Px(24.0),
                                     placeholder: "Filter...".to_string(),
-                                    corners: RoundedCorners::Top,
                                     ..default()
                                 },
                                 TextInputContents::default()

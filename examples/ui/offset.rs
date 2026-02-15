@@ -25,7 +25,7 @@ pub fn offset_slider<T: Component + Default + From<f32>>(
             (
                 Text::new(label),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText

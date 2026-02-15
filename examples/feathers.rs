@@ -15,7 +15,7 @@ use bevy::{
     input::common_conditions::input_toggle_active,
     picking::mesh_picking::MeshPickingPlugin,
     prelude::*,
-    render::view::Hdr,
+    camera::Hdr,
 };
 use bevy_make_human::prelude::*;
 use bevy_ui_text_input::TextInputPlugin;

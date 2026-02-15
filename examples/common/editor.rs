@@ -11,13 +11,13 @@ use bevy::{
     gizmos::{
         aabb::AabbGizmoConfigGroup,
         config::{GizmoConfig, GizmoConfigStore},
-        light::{LightGizmoColor, LightGizmoConfigGroup},
     },
     input::common_conditions::input_just_pressed,
     pbr::wireframe::WireframeConfig,
     picking::pointer::{PointerId, PointerInteraction},
     prelude::*,
     render::diagnostic::RenderDiagnosticsPlugin,
+    ui_render::GlobalUiDebugOptions,
     window::Monitor,
 };
 use bevy_egui::{EguiContext, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiContext, egui};
@@ -112,7 +112,7 @@ impl Plugin for EditorPlugin {
 fn setup(
     mut config_store: ResMut<GizmoConfigStore>,
     state: Res<State<EditorState>>,
-    mut ui_debug: ResMut<UiDebugOptions>,
+    mut ui_debug: ResMut<GlobalUiDebugOptions>,
     mut pick_debug: ResMut<DebugPickingMode>,
     mut physics_ui: ResMut<PhysicsDiagnosticsUiSettings>,
 ) {
@@ -285,7 +285,7 @@ fn toggle_picking_debug(mut mode: ResMut<DebugPickingMode>) {
     };
 }
 
-fn toggle_ui_debug(mut ui: ResMut<UiDebugOptions>) {
+fn toggle_ui_debug(mut ui: ResMut<GlobalUiDebugOptions>) {
     ui.enabled = !ui.enabled;
 }
 

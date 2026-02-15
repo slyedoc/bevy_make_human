@@ -1,7 +1,7 @@
 use super::{clothing::ClothingMenu, morphs::MorphMenu, scroll::*, text_input::*};
 
 use bevy::{
-    feathers::{controls::*, rounded_corners::RoundedCorners, theme::*, tokens},
+    feathers::{controls::*, theme::*, tokens},
     picking::hover::Hovered,
     prelude::*,
     ui_widgets::*,
@@ -85,7 +85,7 @@ pub fn dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + Sync 
             (
                 Text::new(type_name),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText
@@ -129,7 +129,7 @@ pub fn dropdown_with_thumb<
             (
                 Text::new(type_name),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText
@@ -174,7 +174,7 @@ pub fn dropdown_optional_with_thumb<
             (
                 Text::new(type_name),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: FontSize::Px(12.0),
                     ..default()
                 },
                 ThemedText
@@ -371,7 +371,6 @@ fn on_open_dropdown_optional_thumb<
                                 width: Val::Percent(100.0),
                                 height: Val::Px(24.0),
                                 placeholder: "Filter...".to_string(),
-                                corners: RoundedCorners::Top,
                                 ..default()
                             },
                             TextInputContents::default()
@@ -593,7 +592,6 @@ fn on_open_dropdown<T: Component + Copy + IntoEnumIterator + ToString + Send + S
                                 width: Val::Percent(100.0),
                                 height: Val::Px(24.0),
                                 placeholder: "Filter...".to_string(),
-                                corners: RoundedCorners::Top,
                                 ..default()
                             },
                             TextInputContents::default()
@@ -699,7 +697,6 @@ fn on_open_dropdown_thumb<
                                 width: Val::Percent(100.0),
                                 height: Val::Px(24.0),
                                 placeholder: "Filter...".to_string(),
-                                corners: RoundedCorners::Top,
                                 ..default()
                             },
                             TextInputContents::default()

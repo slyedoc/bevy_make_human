@@ -35,7 +35,7 @@ pub fn collapsible<C: Bundle>(title: &'static str, expanded: bool, content: C) -
                         Text::new(format!("{} {}", if expanded { "v" } else { ">" }, title)),
                         ThemedText,
                         TextFont {
-                            font_size: 12.0,
+                            font_size: FontSize::Px(12.0),
                             ..default()
                         },
                     )),
