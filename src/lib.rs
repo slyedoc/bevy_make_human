@@ -706,13 +706,9 @@ fn update_human(
                             ) {
                                 let morph_handle = images.add(morph_image.0);
                                 mesh.set_morph_targets(morph_handle);
-                                if let Ok(weights) =
-                                    MeshMorphWeights::new(vec![0.0; arkit_morphs.len()])
-                                {
-                                    commands.entity(entity).insert(weights);
-                                } else {
-                                    warn!("Failed to create MeshMorphWeights for ARKit targets");
-                                }
+                                commands.entity(entity).insert(MeshMorphWeights::Value {
+                                    weights: vec![0.0; arkit_morphs.len()],
+                                });
                             }
                         }
 
@@ -726,7 +722,7 @@ fn update_human(
                         // Add clearcoat for glossy wet eye look
                         #[cfg(feature = "glossy_eyes")]
                         if a.tag == MHTag::Eyes {
-                            if let Some(mat) = materials.get_mut(&a.mat) {
+                            if let Some(mut mat) = materials.get_mut(&a.mat) {
                                 mat.clearcoat = 1.0;
                                 mat.clearcoat_perceptual_roughness = 0.1;
                             }
