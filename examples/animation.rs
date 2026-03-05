@@ -9,10 +9,7 @@ use common::*;
 
 use avian3d::prelude::*;
 use bevy::{
-    animation::AnimationTargetId,
-    gltf::Gltf,
-    platform::collections::HashMap,
-    prelude::*,
+    animation::AnimationTargetId, gltf::Gltf, log::LogPlugin, platform::collections::HashMap, prelude::*
 };
 use bevy_make_human::prelude::*;
 use std::{any::TypeId, f32::consts::FRAC_PI_2};
@@ -20,7 +17,10 @@ use std::{any::TypeId, f32::consts::FRAC_PI_2};
 fn main() -> AppExit {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(LogPlugin {
+                filter: FILTER.to_string(),
+                ..default()
+            }),
             PhysicsPlugins::default(),
             MakeHumanPlugin::default(),
             CommonPlugin, // camera controls, egui, mipmaps, skinned AABB

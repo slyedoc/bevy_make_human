@@ -20,26 +20,20 @@ bevy = { git = "https://github.com/bevyengine/bevy", branch = "main", features =
     "png", # png texture support
     "jpeg", # jpg texture support
 ] }
+# TODO: using bevy main branch forks, use released versions once available 
 avian3d = { git = "https://github.com/slyedoc/avian", branch = "bevy-main" }
-
 bevy-inspector-egui = { git = "https://github.com/slyedoc/bevy-inspector-egui", branch = "bevy-main" }
-
 bevy_asset_loader = { git = "https://github.com/slyedoc/bevy_asset_loader", branch = "bevy-main", features = [
     "2d",
     "standard_dynamic_assets",
 ] }
-bevy_blend_shapes = { git = "https://github.com/slyedoc/bevy_blend_shapes.git", branch = "main" }
+bevy_mod_billboard = { git = "https://github.com/slyedoc/bevy_mod_billboard.git", branch = "bevy-main", optional = true }
 
 obj = "0.10.2"
-
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
-
-# Optional debug_draw
-bevy_mod_billboard = { git = "https://github.com/slyedoc/bevy_mod_billboard.git", branch = "bevy-main", optional = true }
 
 [[example]]
 name = "basic"

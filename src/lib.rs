@@ -1,4 +1,5 @@
 pub mod assets;
+pub mod blend_shapes;
 pub mod components;
 #[cfg(feature = "debug_draw")]
 pub mod debug_draw;
@@ -34,7 +35,7 @@ use bevy::{
 };
 use bevy_asset_loader::prelude::*;
 #[cfg(feature = "arkit")]
-use bevy_blend_shapes::ARKit;
+use crate::blend_shapes::ARKit;
 #[cfg(feature = "arkit")]
 use strum::IntoEnumIterator;
 
@@ -345,7 +346,20 @@ fn human_changed(
 
         #[cfg(feature = "arkit")]
         let arkit_targets: Vec<Handle<MorphTargetData>> = ARKit::iter()
-            .map(|shape| asset_server.load(format!("make_human/targets/arkit/{}.target", shape)))
+            .map(|shape| {
+                // Asset files use kebab-case (e.g. "eye-blink-left.target")
+                let name = shape
+                    .as_ref()
+                    .chars()
+                    .fold(String::new(), |mut s, c| {
+                        if c.is_uppercase() && !s.is_empty() {
+                            s.push('-');
+                        }
+                        s.push(c.to_ascii_lowercase());
+                        s
+                    });
+                asset_server.load(format!("make_human/targets/arkit/{name}.target"))
+            })
             .collect();
 
         commands

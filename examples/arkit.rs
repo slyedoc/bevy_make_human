@@ -4,7 +4,7 @@ pub use common::*;
 
 use avian3d::prelude::*;
 use bevy::{mesh::morph::MeshMorphWeights, prelude::*};
-use bevy_blend_shapes::ARKit;
+use bevy_make_human::blend_shapes::ARKit;
 use bevy_make_human::prelude::*;
 use strum::EnumCount;
 
