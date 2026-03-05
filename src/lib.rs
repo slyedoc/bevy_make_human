@@ -143,8 +143,6 @@ pub struct BaseMeshAssets {
 
 #[derive(Resource, Default)]
 pub struct BaseMesh {
-    // TODO: Dont currently need, remove?
-    pub _mesh: Handle<Mesh>,
     /// The vertices in the base mesh
     pub vertices: Vec<Vec3>,
     /// Maps Bevy mesh vertex idx -> MH obj vertex idx (handles UV seam duplicates)
@@ -185,7 +183,6 @@ fn poll_basemesh_task(
     obj_assets: ResMut<Assets<ObjBaseMesh>>,
     vg_assets: Res<Assets<VertexGroups>>,
     mut prepare_task: ResMut<PrepareBasemeshTask>,
-    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if let Some(PrepareBasemeshOutput { mhid_lookup }) =
         future::block_on(future::poll_once(&mut prepare_task.0))
@@ -201,11 +198,9 @@ fn poll_basemesh_task(
             .clone();
 
         commands.insert_resource(BaseMesh {
-            _mesh: meshes.add(obj_base_mesh.mesh.clone()),
             vertices: obj_base_mesh.vertices.clone(),
             mhid_lookup,
             vertex_groups: vg.clone(),
-            ..default()
         });
         commands.remove_resource::<BaseMeshAssets>();
         commands.set_state(MHState::Ready);
