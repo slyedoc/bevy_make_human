@@ -9,7 +9,7 @@ version = "0.1.1"
 edition = "2024"
 
 [features]
-default = ["glossy_eyes", "debug_draw", "arkit"]
+default = ["debug_draw", "arkit"]
 glossy_eyes = ["bevy/pbr_multi_layer_material_textures"]
 arkit = []
 debug_draw = ["bevy_mod_billboard", "bevy/default_font"]
