@@ -24,9 +24,8 @@ pub mod prelude {
 use avian3d::prelude::*;
 use bevy::animation::AnimatedBy;
 #[cfg(feature = "arkit")]
-use bevy::asset::RenderAssetUsages;
 #[cfg(feature = "arkit")]
-use bevy::mesh::morph::{MeshMorphWeights, MorphAttributes, MorphTargetImage};
+use bevy::mesh::morph::{MeshMorphWeights, MorphAttributes};
 use bevy::{
     animation::AnimationTargetId,
     mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
@@ -592,7 +591,6 @@ fn update_human(
     )>,
     mut inverse_bindpose_assets: ResMut<Assets<SkinnedMeshInverseBindposes>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, children_maybe, mut task, floor_offset) in query.iter_mut() {
@@ -706,24 +704,19 @@ fn update_human(
 
                         #[cfg(feature = "arkit")]
                         {
-                            let vertex_count = mesh.count_vertices();
-                            let targets_iter = arkit_morphs.iter().map(|mesh_offsets| {
-                                mesh_offsets.iter().map(|&offset| {
-                                    MorphAttributes::new(offset, Vec3::ZERO, Vec3::ZERO)
+                            let morph_targets: Vec<MorphAttributes> = arkit_morphs
+                                .iter()
+                                .flat_map(|mesh_offsets| {
+                                    mesh_offsets.iter().map(|&offset| {
+                                        MorphAttributes::new(offset, Vec3::ZERO, Vec3::ZERO)
+                                    })
                                 })
-                            });
+                                .collect();
 
-                            if let Ok(morph_image) = MorphTargetImage::new(
-                                targets_iter,
-                                vertex_count,
-                                RenderAssetUsages::default(),
-                            ) {
-                                let morph_handle = images.add(morph_image.0);
-                                mesh.set_morph_targets(morph_handle);
-                                commands.entity(entity).insert(MeshMorphWeights::Value {
-                                    weights: vec![0.0; arkit_morphs.len()],
-                                });
-                            }
+                            mesh.set_morph_targets(morph_targets);
+                            commands.entity(entity).insert(MeshMorphWeights::Value {
+                                weights: vec![0.0; arkit_morphs.len()],
+                            });
                         }
 
                         commands.entity(entity).insert((
